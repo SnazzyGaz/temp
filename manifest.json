@@ -1,0 +1,22 @@
+{
+  "name": "Chromemory",
+  "short_name": "Chromemory",
+  "description": "How precisely do you see colours? Test your memory.",
+  "start_url": "/chromemory/",
+  "scope": "/chromemory/",
+  "display": "standalone",
+  "background_color": "#26262a",
+  "theme_color": "#26262a",
+  "icons": [
+    {
+      "src": "/chromemory/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/chromemory/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

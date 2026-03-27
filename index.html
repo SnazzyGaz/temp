@@ -1,0 +1,2568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#26262a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Chromemory">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<title>Chromemory</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --bg:     #26262a;
+  --bg2:    #2e2e33;
+  --bg3:    #35353b;
+  --bg4:    #3d3d44;
+  --line:   #3a3a40;
+  --line2:  #44444c;
+  --dim:    #5a5a64;
+  --mute:   #7a7a88;
+  --sub:    #a0a0b0;
+  --text:   #c8c8d8;
+  --bright: #e8e8f0;
+  --white:  #f0f0f8;
+  --mono:   'JetBrains Mono', 'Courier New', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%;
+  height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.screen { display: none; height: 100vh; }
+.screen.active { display: flex; }
+
+/* ── HOME ── */
+#home {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+.home-inner {
+  width: 100%;
+  max-width: 520px;
+  margin-top: 0;
+}
+
+.home-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  gap: 0;
+}
+
+.home-hero-text { flex: 0 0 auto; }
+
+.home-brain {
+  width: 240px;
+  height: 240px;
+  flex-shrink: 0;
+  margin-left: -22px;
+  margin-top: -20px;
+}
+
+.wordmark {
+  font-size: 10px;
+  letter-spacing: .28em;
+  color: var(--dim);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.home-title {
+  font-size: clamp(28px, 5vw, 46px);
+  font-weight: 300;
+  color: var(--bright);
+  letter-spacing: -.02em;
+  line-height: 1.05;
+  margin-bottom: 4px;
+}
+
+.home-sub {
+  font-size: 10px;
+  letter-spacing: .12em;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+
+.section-label {
+  font-size: 9px;
+  letter-spacing: .18em;
+  color: var(--dim);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.diff-row {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 24px;
+}
+
+.diff-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 2px 9px;
+  background: transparent;
+  border: 0.5px solid var(--line2);
+  color: var(--mute);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all .15s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.diff-time { font-size: 10px; color: var(--dim); letter-spacing: .06em; font-weight: 400; }
+.diff-btn:hover { border-color: var(--mute); color: var(--sub); }
+.diff-btn.on { background: var(--white); color: var(--bg); border-color: var(--white); }
+.diff-btn.on .diff-time { color: var(--bg3); }
+
+.primary-btn {
+  width: 100%;
+  padding: 13px;
+  background: var(--white);
+  border: none;
+  color: var(--bg);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 3px;
+  margin-bottom: 7px;
+  transition: opacity .15s;
+}
+.primary-btn:hover { opacity: .88; }
+
+.ghost-btn {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  border: 0.5px solid var(--line2);
+  color: var(--sub);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all .15s;
+  margin-bottom: 7px;
+}
+.ghost-btn:hover { border-color: var(--mute); color: var(--text); }
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0;
+}
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 0.5px;
+  background: var(--line);
+}
+.divider span {
+  font-size: 9px;
+  letter-spacing: .12em;
+  color: var(--dim);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ── SEED FIELD ── */
+.seed-field-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.seed-field-row input {
+  flex: 1;
+  background: var(--bg3);
+  border: 0.5px solid var(--line2);
+  color: var(--bright);
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: .08em;
+  padding: 10px 12px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  outline: none;
+  transition: border-color .15s;
+}
+.seed-field-row input:focus { border-color: var(--mute); }
+.seed-field-row input::placeholder { color: var(--dim); font-size: 10px; letter-spacing: .04em; text-transform: none; }
+
+.seed-random-btn {
+  width: 40px;
+  flex-shrink: 0;
+  background: transparent;
+  border: 0.5px solid var(--line2);
+  color: var(--mute);
+  font-size: 18px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.seed-random-btn:hover { border-color: var(--mute); color: var(--sub); }
+.seed-random-btn:active { transform: rotate(180deg); }
+
+
+
+.tip-text {
+  font-size: 9px;
+  letter-spacing: .05em;
+  color: var(--dim);
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* ── UPDATE BUTTON ── */
+#update-btn {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: transparent;
+  border: 0.5px solid var(--line2);
+  color: var(--mute);
+  font-family: var(--mono);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+  z-index: 10;
+  line-height: 1;
+}
+#update-btn:hover { border-color: var(--mute); color: var(--sub); }
+#update-btn.checking { animation: upd-spin 1s linear infinite; }
+#update-btn.up-to-date { color: var(--dim); }
+#update-btn.has-update { border-color: #7ec8a0; color: #7ec8a0; }
+
+/* green dot badge */
+#update-btn::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #7ec8a0;
+  border: 1.5px solid var(--bg);
+  display: none;
+}
+#update-btn.has-update::after { display: block; }
+
+@keyframes upd-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── GAME ── */
+#game { flex-direction: row; }
+
+.stage-panel {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.stage-colour-wrap {
+  width: min(44vh, 360px);
+  height: min(44vh, 360px);
+  min-width: 180px;
+  min-height: 180px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.stage-colour {
+  position: absolute;
+  inset: 0;
+  transition: background 0.1s;
+}
+
+.stage-meta {
+  position: absolute;
+  bottom: 14px;
+  left: 18px;
+  right: 18px;
+  pointer-events: none;
+}
+
+.stage-round {
+  font-size: 9px;
+  letter-spacing: .18em;
+  color: rgba(255,255,255,0.2);
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.stage-countdown {
+  font-size: clamp(32px, 5vw, 52px);
+  font-weight: 300;
+  color: rgba(255,255,255,0.8);
+  line-height: 1;
+  letter-spacing: -.02em;
+  transition: opacity .4s;
+}
+
+.stage-hint {
+  font-size: 9px;
+  letter-spacing: .14em;
+  color: rgba(255,255,255,0.25);
+  text-transform: uppercase;
+  margin-top: 5px;
+}
+
+.progress-bar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+}
+.progress-fill {
+  height: 100%;
+  background: rgba(255,255,255,0.16);
+}
+
+/* ── CTRL PANEL ── */
+.ctrl-panel {
+  width: 320px;
+  flex-shrink: 0;
+  background: var(--bg);
+  border-left: 0.5px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 22px 18px;
+  overflow-y: auto;
+}
+
+.ctrl-wordmark {
+  font-size: 9px;
+  letter-spacing: .25em;
+  color: var(--dim);
+  text-transform: uppercase;
+  margin-bottom: 22px;
+}
+
+.ctrl-dots {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 20px;
+}
+.ctrl-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--line2);
+  transition: background .3s;
+}
+.ctrl-dot.on { background: var(--white); }
+
+.ctrl-preview {
+  height: 68px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  border: 0.5px solid var(--line);
+  transition: background .06s;
+  position: relative;
+}
+.ctrl-preview-label {
+  position: absolute;
+  bottom: 6px; left: 9px;
+  font-size: 8px;
+  letter-spacing: .1em;
+  color: rgba(255,255,255,0.18);
+  text-transform: uppercase;
+}
+
+.sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 20px;
+  transition: opacity .3s;
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.slider-axis {
+  font-size: 9px;
+  letter-spacing: .12em;
+  color: var(--dim);
+  text-transform: uppercase;
+  min-width: 14px;
+}
+
+.slider-track {
+  flex: 1;
+  position: relative;
+  height: 10px;
+  background: var(--line2);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.slider-fill {
+  display: none;
+}
+.slider-thumb {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--white);
+  border: 2px solid rgba(0,0,0,0.3);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.slider-native {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 36px;
+  top: 50%;
+  transform: translateY(-50%);
+  left: 0;
+  z-index: 2;
+}
+
+.slider-val {
+  font-size: 11px;
+  color: var(--mute);
+  min-width: 38px;
+  text-align: right;
+  letter-spacing: .04em;
+}
+
+.ctrl-footer {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 0.5px solid var(--line);
+}
+.ctrl-seed-label {
+  font-size: 9px;
+  letter-spacing: .15em;
+  color: var(--dim);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.ctrl-seed-val {
+  font-size: 11px;
+  letter-spacing: .08em;
+  color: var(--mute);
+}
+
+/* ── RESULT ── */
+#result { flex-direction: row; }
+
+.result-stage {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.result-stage-wrap {
+  width: min(44vh, 360px);
+  height: min(44vh, 360px);
+  min-width: 180px;
+  min-height: 180px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.result-target-bg {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+.result-guess-bg {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(0 0, 0 100%, 100% 100%);
+}
+
+.result-label-target {
+  position: absolute;
+  top: 12px; right: 14px;
+  font-size: 8px;
+  letter-spacing: .14em;
+  color: rgba(255,255,255,0.28);
+  text-transform: uppercase;
+  font-family: var(--mono);
+  text-align: right;
+  line-height: 1.8;
+}
+.result-label-guess {
+  position: absolute;
+  bottom: 12px; left: 14px;
+  font-size: 8px;
+  letter-spacing: .14em;
+  color: rgba(255,255,255,0.28);
+  text-transform: uppercase;
+  font-family: var(--mono);
+  line-height: 1.8;
+}
+
+.result-panel {
+  width: 320px;
+  flex-shrink: 0;
+  background: var(--bg);
+  border-left: 0.5px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  padding: 22px 18px;
+  overflow-y: auto;
+}
+
+.result-score-big {
+  font-size: clamp(42px, 5.5vw, 60px);
+  font-weight: 300;
+  color: var(--bright);
+  letter-spacing: -.02em;
+  line-height: 1;
+  margin-bottom: 3px;
+}
+.result-grade {
+  font-size: 9px;
+  letter-spacing: .15em;
+  color: var(--mute);
+  text-transform: uppercase;
+  margin-bottom: 22px;
+}
+
+.axes-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 22px;
+}
+.axis-cell {
+  background: var(--bg2);
+  border: 0.5px solid var(--line);
+  border-radius: 3px;
+  padding: 10px 8px;
+  text-align: center;
+}
+.axis-cell-label { font-size: 8px; letter-spacing: .15em; color: var(--dim); text-transform: uppercase; margin-bottom: 5px; }
+.axis-cell-score { font-size: 17px; font-weight: 400; color: var(--text); margin-bottom: 3px; letter-spacing: -.01em; }
+.axis-cell-delta { font-size: 8px; color: var(--dim); letter-spacing: .04em; }
+
+/* ── END ── */
+#end { flex-direction: row; }
+
+.end-stage {
+  flex: 1;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 28px;
+  overflow-y: auto;
+}
+
+.end-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 340px;
+}
+
+.end-swatch {
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.end-swatch-target {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+.end-swatch-guess {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(0 0, 0 100%, 100% 100%);
+}
+
+.end-row-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.end-row-rnd {
+  font-size: 8px;
+  letter-spacing: .16em;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+
+.end-row-score {
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--bright);
+  letter-spacing: -.01em;
+  line-height: 1;
+}
+
+.end-row-axes {
+  display: flex;
+  gap: 10px;
+}
+
+.end-row-axis {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.end-row-axis-label {
+  font-size: 7px;
+  letter-spacing: .14em;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+
+.end-row-axis-val {
+  font-size: 11px;
+  color: var(--mute);
+  letter-spacing: .03em;
+}
+
+.end-row-axis-delta {
+  font-size: 8px;
+  color: var(--dim);
+  letter-spacing: .02em;
+}
+
+.end-panel {
+  width: 320px;
+  flex-shrink: 0;
+  background: var(--bg);
+  border-left: 0.5px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 22px 18px;
+  overflow-y: auto;
+}
+
+.end-panel > * {
+  width: 100%;
+  max-width: 260px;
+}
+
+.seed-reveal {
+  background: var(--bg2);
+  border: 0.5px solid var(--line2);
+  border-radius: 4px;
+  padding: 13px;
+  margin-bottom: 18px;
+}
+.seed-reveal-label { font-size: 8px; letter-spacing: .18em; color: var(--dim); text-transform: uppercase; margin-bottom: 5px; }
+.seed-reveal-code { font-size: 15px; letter-spacing: .1em; color: var(--bright); margin-bottom: 4px; }
+.seed-reveal-hint { font-size: 8px; color: var(--dim); line-height: 1.6; letter-spacing: .03em; }
+
+.end-score { font-size: 50px; font-weight: 300; color: var(--bright); letter-spacing: -.02em; line-height: 1; margin-bottom: 2px; }
+.end-grade { font-size: 9px; letter-spacing: .15em; color: var(--mute); text-transform: uppercase; margin-bottom: 18px; }
+
+.hist-list { margin-bottom: 14px; }
+.hist-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 0;
+  border-bottom: 0.5px solid var(--line);
+}
+.hist-rnd { font-size: 9px; letter-spacing: .08em; color: var(--dim); text-transform: uppercase; flex: 1; }
+.hist-score { font-size: 11px; color: var(--sub); letter-spacing: .04em; }
+
+/* ── MOBILE ── */
+@media (max-width: 640px) {
+
+  html, body { overflow: hidden; height: 100%; height: 100dvh; }
+  .screen { height: 100dvh; height: 100%; }
+
+  /* ── HOME ── */
+  #home {
+    padding: 0 1.25rem calc(1.5rem + env(safe-area-inset-bottom));
+    justify-content: center;
+    overflow-y: auto;
+  }
+  .home-inner { margin-top: 0; }
+  .home-hero {
+    flex-direction: row;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .home-hero-text { flex: 0 0 auto; }
+  .home-brain { width: 120px; height: 120px; margin-left: -14px; margin-top: -8px; }
+  .wordmark { font-size: 26px !important; letter-spacing: .06em !important; }
+  .home-sub { font-size: 13px; letter-spacing: .1em; }
+  .section-label { font-size: 13px; }
+  .diff-row { gap: 4px; margin-bottom: 16px; }
+  .diff-btn { padding: 12px 0; font-size: 12px; font-weight: 500; justify-content: center; align-items: center; }
+  .diff-time { font-size: 11px; font-weight: 400; }
+  .primary-btn { padding: 16px; font-size: 14px; letter-spacing: .2em; font-weight: 500; }
+  .ghost-btn { padding: 15px; font-size: 14px; letter-spacing: .15em; font-weight: 500; }
+  .tip-text { font-size: 12px; }
+  .divider span { font-size: 11px; }
+
+  /* ── GAME ── */
+  #game { flex-direction: column; overflow: hidden; }
+
+  .stage-panel {
+    flex: 0 0 auto;
+    max-height: 46dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: calc(env(safe-area-inset-top) + 12px) 16px 8px;
+  }
+
+  .stage-colour-wrap {
+    width: min(78vw, 46vh);
+    height: min(78vw, 46vh);
+    min-width: 0;
+    min-height: 0;
+    border-radius: 24px;
+  }
+
+  .stage-hint { font-size: 11px; }
+  .stage-countdown { font-size: clamp(28px, 6vw, 44px); }
+
+  .ctrl-panel {
+    flex: 0 0 auto;
+    width: 100%;
+    border-left: none;
+    border-top: 0.5px solid var(--line);
+    padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+  }
+  #lock-btn { margin-bottom: 16px; }
+  .sliders { margin-top: auto; }
+  .ctrl-footer { display: flex; flex-direction: column; padding-top: 16px; border-top: 0.5px solid var(--line); }
+  .ctrl-wordmark { display: none; }
+  .menu-btn {
+    display: inline-block !important;
+    background: transparent;
+    border: 0.5px solid var(--line2);
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .ctrl-preview { display: none; }
+  .ctrl-seed-label { font-size: 11px; }
+  .ctrl-seed-val { font-size: 13px; }
+  #stage-round { font-size: 11px !important; }
+  #ctrl-mode-label { font-size: 11px; }
+  .sliders { gap: 18px; margin-bottom: 22px; }
+  .slider-row { gap: 12px; }
+  .slider-axis { font-size: 12px; min-width: 12px; }
+  .slider-val { font-size: 15px; min-width: 42px; }
+  .slider-track { height: 22px; border-radius: 11px; }
+  .slider-thumb { width: 34px; height: 34px; border-width: 2px; }
+  .slider-native { height: 52px; }
+
+
+  /* ── RESULT ── */
+  #result { flex-direction: column; overflow: hidden; }
+
+  .result-stage {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: calc(env(safe-area-inset-top) + 12px) 16px 8px;
+  }
+
+  .result-stage-wrap {
+    width: min(62vw, 44vh);
+    height: min(62vw, 44vh);
+    min-width: 0;
+    min-height: 0;
+    border-radius: 20px;
+  }
+
+  .result-panel {
+    flex: 0 0 auto;
+    width: 100%;
+    border-left: none;
+    border-top: 0.5px solid var(--line);
+    overflow-y: auto;
+    padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+  }
+  .result-score-big { font-size: 34px; margin-bottom: 2px; margin-top: auto; }
+  #next-btn { margin-bottom: 16px; }
+  .result-grade { font-size: 11px; margin-bottom: 10px; }
+  .axes-grid { gap: 4px; margin-bottom: 10px; }
+  .axis-cell { padding: 7px 5px; }
+  .axis-cell-label { font-size: 10px; margin-bottom: 3px; }
+  .axis-cell-score { font-size: 15px; }
+  .axis-cell-delta { font-size: 10px; }
+
+  /* ── END ── */
+  #end { flex-direction: column; overflow: hidden; }
+
+  .end-stage {
+    flex: 1 1 0;
+    min-height: 0;
+    max-height: calc(58dvh + 20px);
+    overflow-y: auto;
+    padding: calc(env(safe-area-inset-top) + 10px) 14px 10px;
+    gap: 8px;
+    justify-content: flex-start;
+    align-items: stretch;
+  }
+
+  .end-row { max-width: 100%; gap: 12px; }
+  .end-swatch { width: 52px; height: 52px; border-radius: 10px; flex-shrink: 0; }
+  .end-row-rnd { font-size: 10px; margin-bottom: 2px; }
+  .end-row-score { font-size: 19px; }
+  .end-row-axis-label { font-size: 9px; }
+  .end-row-axis-val { font-size: 13px; }
+  .end-row-axis-delta { font-size: 10px; }
+
+  .end-panel {
+    flex: 0 0 auto;
+    width: 100%;
+    border-left: none;
+    border-top: 0.5px solid var(--line);
+    padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
+    align-items: flex-start;
+    overflow: visible;
+  }
+  .end-panel > * { max-width: 100%; }
+  .end-score { font-size: 36px; margin-bottom: 2px; }
+  .end-grade { font-size: 11px; margin-bottom: 12px; }
+  .seed-reveal { display: none; }
+  .ctrl-wordmark { font-size: 11px; margin-bottom: 4px; }
+}
+</style>
+</head>
+<body>
+
+<!-- HOME -->
+<div class="screen active" id="home">
+  <div class="home-inner">
+
+    <button onclick="openInfoModal()" style="position:absolute;top:16px;right:16px;width:28px;height:28px;border-radius:50%;background:transparent;border:0.5px solid var(--line2);color:var(--mute);font-family:var(--mono);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;z-index:10" onmouseover="this.style.borderColor='var(--mute)';this.style.color='var(--sub)'" onmouseout="this.style.borderColor='var(--line2)';this.style.color='var(--mute)'">?</button>
+
+    <button id="update-btn" title="Check for updates" onclick="checkForUpdate(true)">↑</button>
+
+    <div class="home-hero">
+      <div class="home-hero-text">
+        <div class="wordmark" style="font-size:22px;font-weight:500;letter-spacing:.08em;color:var(--bright);margin-bottom:4px">CHROMEMORY.</div>
+        <div style="font-size:11px;font-weight:500;letter-spacing:.2em;color:var(--sub);text-transform:uppercase;margin-bottom:12px">Colour memory test</div>
+        <div class="home-sub">How precisely do you see?</div>
+      </div>
+      <svg class="home-brain" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="brainTissue" clipPathUnits="userSpaceOnUse">
+      <path transform="translate(0,1024) scale(0.1,-0.1)"
+            clip-rule="evenodd"
+            d="M0 0 L10240 0 L10240 10240 L0 10240 Z M0 5120 l0 -5120 5120 0 5120 0 0 5120 0 5120 -5120 0 -5120 0 0
+-5120z m4970 3381 c80 -24 154 -52 165 -62 16 -16 20 -32 20 -92 -1 -82 -24
+-137 -75 -181 -44 -36 -77 -33 -141 14 -84 62 -146 89 -212 91 -31 1 -60 0
+-63 -3 -3 -3 26 -26 63 -51 122 -81 222 -205 223 -275 0 -42 -19 -60 -90 -87
+-119 -46 -200 -118 -297 -268 -61 -93 -88 -158 -135 -322 -62 -215 -79 -239
+-193 -273 -67 -20 -145 -64 -145 -81 0 -4 51 -12 114 -18 76 -6 122 -15 139
+-26 29 -19 84 -127 122 -242 36 -107 41 -209 20 -401 -25 -224 -17 -431 23
+-609 42 -183 45 -208 33 -252 -25 -93 -214 -223 -464 -320 -71 -27 -100 -33
+-145 -31 l-57 3 2 100 c0 55 17 208 36 340 55 371 70 552 64 755 -7 209 -21
+279 -88 443 -65 158 -69 195 -35 373 35 180 46 213 123 367 68 134 81 183 101
+363 26 233 158 311 356 209 38 -19 71 -33 73 -31 3 2 -2 17 -10 33 -36 67
+-137 132 -206 133 -31 0 -33 2 -26 28 27 109 156 236 287 281 128 44 214 37
+380 -29 55 -23 106 -39 112 -37 6 2 -18 33 -54 69 -89 89 -145 110 -300 115
+-106 3 -121 1 -200 -26 -86 -30 -136 -27 -64 4 77 32 156 44 279 41 108 -2
+134 -7 265 -45z m578 -10 c9 -5 -2 -13 -35 -26 -26 -9 -86 -37 -132 -61 -46
+-24 -86 -44 -90 -44 -4 0 -13 19 -18 43 -6 23 -14 52 -18 64 -5 16 -2 22 12
+26 32 8 267 7 281 -2z m-1347 -31 c20 -6 48 -21 62 -34 l27 -25 -53 -83 c-28
+-46 -63 -107 -76 -135 l-24 -52 -62 45 c-84 59 -138 82 -229 94 -94 14 -183 2
+-321 -40 -81 -25 -114 -30 -175 -28 l-75 3 90 67 c151 113 268 166 410 187 85
+12 383 13 426 1z m1824 -52 c62 -13 175 -71 206 -105 23 -25 23 -26 5 -37 -84
+-49 -133 -124 -165 -253 -11 -45 -40 -121 -64 -170 -24 -48 -54 -124 -67 -168
+-29 -103 -54 -151 -146 -285 -132 -193 -168 -299 -168 -505 0 -142 -3 -129 89
+-349 33 -79 37 -99 38 -178 1 -48 4 -88 8 -88 12 0 39 37 60 85 33 74 30 165
+-9 285 -47 143 -56 215 -43 310 23 153 62 242 179 405 74 104 108 169 147 280
+36 102 46 117 104 154 76 49 154 72 269 78 68 4 102 10 99 17 -2 6 -25 26 -53
+44 l-49 34 -100 -5 c-55 -3 -110 -8 -122 -12 -21 -7 -23 -4 -23 26 0 151 116
+229 323 216 61 -3 120 -14 170 -31 263 -88 600 -333 673 -489 38 -81 33 -127
+-20 -198 -57 -76 -81 -145 -80 -234 1 -71 4 -83 87 -305 44 -117 172 -516 198
+-618 30 -120 26 -217 -20 -411 -22 -91 -54 -248 -71 -349 -32 -189 -46 -246
+-85 -322 -54 -107 -285 -353 -366 -390 -95 -43 -237 -19 -384 65 -112 64 -115
+68 -83 102 51 56 111 158 211 360 236 477 266 567 274 808 5 142 4 157 -26
+281 -34 146 -39 234 -16 329 20 81 19 83 -16 49 -44 -41 -77 -111 -89 -188
+-10 -65 -7 -113 20 -296 20 -133 4 -263 -51 -437 -71 -221 -307 -707 -406
+-836 -46 -60 -160 -157 -236 -201 -65 -39 -153 -54 -398 -71 -229 -16 -292
+-24 -389 -50 -30 -8 -58 -15 -63 -15 -4 0 -4 25 -1 55 4 31 3 55 -2 55 -5 0
+-38 -39 -74 -86 -105 -140 -181 -198 -319 -245 -106 -37 -258 -34 -373 7 -46
+16 -47 8 -11 -48 21 -31 25 -42 14 -46 -12 -4 -43 -25 -187 -127 -53 -38 -61
+-40 -128 -40 -134 0 -216 68 -277 230 -18 47 -36 85 -40 85 -12 0 -21 -97 -14
+-152 18 -138 116 -244 269 -292 13 -5 16 -11 10 -24 -4 -9 -29 -82 -56 -161
+-26 -80 -64 -173 -83 -208 -19 -35 -32 -63 -29 -63 3 0 29 11 58 25 72 34 118
+83 162 173 129 266 259 368 594 467 129 38 193 64 385 160 145 72 254 120 295
+130 36 8 153 20 260 26 312 17 390 39 545 158 50 39 83 57 94 54 9 -4 70 -35
+136 -69 148 -77 234 -104 329 -104 112 0 173 34 319 178 262 257 318 362 377
+711 11 68 42 187 67 265 40 123 46 155 50 251 4 82 1 126 -11 173 -20 74 -214
+618 -276 772 -84 209 -59 353 60 337 58 -8 125 -45 196 -110 90 -83 112 -132
+123 -284 l10 -122 95 -238 c169 -425 199 -542 178 -694 -7 -47 -26 -116 -46
+-163 -19 -44 -50 -119 -70 -166 -55 -132 -70 -201 -70 -325 -1 -100 2 -115 27
+-169 16 -35 31 -56 36 -50 5 5 11 70 13 144 6 164 21 214 137 452 95 194 115
+267 108 388 -6 114 -29 187 -158 501 -117 287 -139 355 -139 434 0 224 -128
+402 -363 506 l-62 28 -7 73 c-3 40 -13 90 -22 111 -9 20 -15 37 -12 37 2 0 25
+-12 52 -27 70 -39 127 -101 238 -260 120 -173 136 -190 227 -249 83 -53 174
+-136 225 -205 18 -25 54 -95 79 -155 55 -132 98 -197 167 -253 85 -68 218
+-203 243 -246 13 -22 42 -105 65 -185 22 -80 68 -212 102 -295 76 -189 76
+-190 87 -312 7 -83 15 -115 45 -181 38 -85 45 -143 25 -211 -12 -41 -58 -112
+-76 -118 -6 -2 -39 36 -72 84 -33 48 -92 124 -131 167 -87 98 -97 128 -81 233
+39 262 43 308 32 372 -14 89 -49 154 -129 241 -91 99 -98 114 -158 323 -20 69
+-42 -80 -25 -174 14 -83 40 -132 110 -211 80 -91 94 -131 89 -257 -5 -124 -18
+-144 -48 -73 -12 28 -28 57 -36 63 -17 14 -17 6 -4 -170 13 -181 5 -216 -93
+-401 -45 -85 -98 -171 -117 -190 -19 -20 -75 -58 -125 -84 -49 -27 -109 -64
+-133 -83 -46 -38 -119 -139 -109 -150 4 -3 28 6 55 21 103 58 223 116 241 116
+11 0 23 -5 26 -11 4 -6 25 -24 47 -40 34 -24 51 -29 99 -29 32 0 60 3 63 8 2
+4 -17 25 -44 47 -74 61 -76 72 -27 141 23 32 62 96 87 143 69 131 106 140 202
+52 53 -48 205 -257 248 -339 12 -23 32 -84 45 -137 27 -107 39 -128 140 -235
+38 -41 78 -86 87 -100 l17 -25 0 26 c1 46 -25 115 -74 194 -43 68 -49 85 -61
+173 -7 53 -16 117 -19 142 -6 39 -2 54 26 105 94 176 92 172 93 248 0 62 -5
+83 -37 153 -20 45 -37 91 -37 102 0 19 87 132 101 132 18 0 74 -220 90 -354
+15 -117 4 -210 -38 -351 -37 -123 -38 -248 -3 -355 16 -51 24 -99 24 -150 1
+-66 -3 -84 -33 -145 -23 -46 -55 -91 -95 -130 -105 -103 -192 -131 -358 -115
+-51 5 -102 10 -113 10 -14 0 0 18 53 66 40 36 72 69 72 74 0 17 -79 -14 -230
+-92 -186 -95 -235 -107 -357 -89 -46 6 -135 30 -199 52 -93 33 -112 44 -103
+55 23 28 210 165 300 220 291 178 519 245 664 196 33 -11 61 -19 63 -17 2 1
+-11 19 -29 39 -48 56 -88 69 -204 70 -123 0 -196 -20 -373 -104 -155 -74 -215
+-110 -378 -226 -262 -187 -358 -232 -592 -276 -171 -33 -559 -32 -857 1 -248
+27 -290 25 -500 -29 -82 -21 -172 -41 -200 -45 -105 -13 -206 -48 -370 -128
+l-169 -82 -97 0 -96 0 -122 62 c-66 34 -121 59 -121 55 0 -19 60 -100 100
+-136 23 -21 68 -50 99 -65 48 -22 69 -26 151 -26 92 0 98 2 180 42 47 24 121
+63 165 87 94 53 155 70 325 91 69 8 168 26 220 40 136 36 213 40 375 21 199
+-23 227 -27 223 -32 -2 -2 -74 -22 -159 -44 -255 -67 -579 -181 -803 -284
+-130 -60 -192 -75 -338 -81 -168 -7 -273 -21 -354 -46 -101 -31 -89 -40 48
+-33 82 4 120 3 113 -3 -15 -15 -268 -117 -365 -148 -210 -65 -309 -78 -392
+-50 -52 18 -145 90 -196 152 l-35 43 89 -6 c100 -7 191 7 226 35 21 18 19 18
+-103 24 -83 3 -149 12 -199 27 -41 12 -118 30 -170 41 -164 34 -274 98 -337
+196 -38 59 -53 61 -53 5 0 -57 40 -131 103 -188 64 -59 121 -88 199 -103 108
+-20 170 -60 227 -150 42 -65 41 -74 -11 -66 -178 28 -367 77 -447 116 -111 54
+-241 179 -289 279 -34 70 -60 198 -48 243 l6 26 47 -24 c25 -14 57 -25 70 -25
+34 0 94 27 125 57 27 26 55 80 45 89 -3 3 -29 -8 -59 -25 -88 -50 -139 -38
+-179 42 -18 34 -21 54 -17 117 8 136 97 285 292 487 101 105 181 170 296 239
+83 50 482 234 492 228 4 -3 8 -22 9 -42 1 -42 22 -107 34 -107 5 0 24 36 42
+80 69 167 108 203 385 353 242 133 247 134 523 143 252 7 281 13 446 82 146
+61 291 71 482 31 43 -9 81 -13 84 -10 9 9 -36 59 -85 94 -49 34 -154 72 -203
+72 -16 0 -29 2 -29 4 0 3 24 38 53 78 57 81 107 181 134 273 15 52 18 104 18
+395 0 377 -1 368 77 523 27 55 47 101 44 104 -9 9 -52 -22 -117 -84 l-67 -64
+-7 63 c-8 64 -31 138 -45 138 -11 0 -25 -397 -20 -560 10 -301 6 -409 -19
+-490 -50 -162 -148 -297 -282 -386 -142 -94 -287 -130 -483 -122 -124 6 -161
+19 -199 70 -26 35 -25 133 3 282 11 61 20 123 20 139 0 30 0 30 -21 11 -34
+-31 -67 -94 -114 -222 -102 -278 -156 -334 -393 -406 -59 -18 -84 -21 -87 -13
+-15 52 -77 337 -86 397 -11 72 -10 170 7 546 7 162 -1 223 -50 382 -44 141
+-50 206 -32 328 42 280 162 518 301 600 24 13 79 38 124 54 45 17 103 41 129
+54 45 23 142 110 142 128 0 11 -23 10 -56 -2 -37 -14 -46 -2 -38 49 22 135
+238 297 522 391 149 50 238 57 367 28z m-3061 -219 c-8 -14 -394 -203 -400
+-196 -8 8 119 106 180 139 100 52 240 89 220 57z m948 -58 c31 -12 75 -39 98
+-59 l42 -37 -36 -54 c-45 -66 -63 -130 -71 -246 -9 -127 -35 -205 -101 -305
+-74 -112 -99 -171 -134 -312 -48 -193 -57 -202 -215 -212 -114 -7 -197 -28
+-226 -57 -32 -32 -10 -46 84 -53 118 -10 196 -25 236 -46 50 -26 115 -96 144
+-155 65 -132 82 -225 81 -465 -1 -219 -17 -387 -70 -708 -19 -118 -39 -259
+-44 -315 -6 -55 -11 -101 -12 -103 -2 -1 -52 -12 -113 -24 -134 -27 -338 -37
+-416 -21 -72 15 -180 67 -244 118 -27 22 -104 76 -170 120 -66 44 -154 108
+-195 143 -145 121 -228 163 -405 201 -49 11 -100 27 -112 35 -31 20 -54 68
+-98 206 -32 99 -46 127 -87 175 -63 75 -77 127 -98 367 -11 128 -31 190 -77
+238 l-26 28 28 52 c16 29 45 119 67 206 43 173 73 239 134 288 56 46 197 111
+295 136 99 24 207 22 237 -5 25 -23 40 -100 48 -250 8 -128 14 -137 51 -71 33
+60 53 171 53 296 0 135 15 174 102 261 91 91 165 119 406 152 63 9 176 35 259
+60 179 55 294 71 395 55 39 -6 75 -13 79 -16 18 -11 8 16 -16 44 -37 44 -103
+72 -184 79 -86 7 -179 -7 -342 -53 -68 -19 -184 -44 -258 -55 -251 -38 -334
+-78 -462 -219 -40 -45 -85 -88 -99 -95 -14 -7 -68 -18 -120 -25 -199 -25 -415
+-119 -530 -230 -90 -87 -134 -174 -167 -334 -34 -163 -50 -191 -121 -223 -220
+-96 -265 -133 -342 -283 -58 -114 -70 -127 -93 -102 -46 51 -41 183 11 276 34
+60 49 67 57 29 13 -56 18 -57 26 -3 5 30 13 85 19 122 21 144 84 228 233 311
+101 56 144 103 178 188 36 92 76 131 223 217 125 73 186 123 274 224 51 59
+119 86 261 104 50 6 59 11 120 72 57 57 85 75 206 132 77 37 181 84 230 106
+l90 38 215 7 c180 5 227 10 290 29 190 56 303 62 412 21z m-1482 -221 c0 -26
+-50 -59 -106 -70 -32 -6 -67 -14 -76 -16 -31 -9 -20 13 18 37 30 18 132 57
+157 58 4 1 7 -4 7 -9z m-833 -1425 c12 -8 26 -30 32 -48 11 -33 31 -195 31
+-255 l0 -32 -26 17 -26 17 6 -55 c14 -105 34 -145 110 -228 64 -67 76 -86 95
+-150 36 -120 79 -223 103 -249 34 -36 102 -67 213 -96 133 -35 221 -80 330
+-167 50 -40 146 -111 215 -157 152 -103 164 -114 201 -177 41 -72 40 -126 -4
+-170 -47 -47 -99 -58 -242 -52 -66 3 -131 8 -145 13 l-25 7 23 -26 c45 -49
+139 -90 217 -95 107 -7 173 16 240 81 58 56 75 98 75 179 l0 47 56 -19 c31
+-11 96 -25 143 -31 83 -11 190 -3 399 27 53 8 55 -4 10 -90 -38 -74 -300 -341
+-363 -372 -29 -14 -61 -19 -115 -19 -70 0 -82 4 -175 50 -99 49 -101 49 -185
+46 -182 -7 -236 -5 -294 12 -38 11 -113 19 -210 22 -275 11 -326 26 -439 133
+-52 50 -89 75 -130 90 -60 23 -77 26 -77 16 0 -10 156 -188 199 -227 47 -43
+122 -82 183 -97 24 -6 118 -15 210 -20 120 -7 196 -17 267 -35 81 -20 124 -25
+227 -25 126 0 127 0 223 -41 74 -32 113 -43 169 -47 40 -2 74 -8 77 -12 2 -4
+-14 -17 -37 -30 -34 -19 -63 -24 -174 -31 -73 -5 -202 -18 -286 -30 -116 -16
+-176 -20 -248 -15 -254 18 -415 84 -575 237 -85 82 -118 102 -199 126 -137 40
+-287 155 -339 260 -13 26 -41 99 -61 160 -21 62 -42 115 -47 119 -6 3 -17 0
+-25 -7 -12 -10 -19 -8 -40 12 -51 47 -68 96 -69 194 0 71 4 96 18 116 48 72
+97 31 165 -138 62 -156 102 -223 177 -299 88 -89 109 -94 374 -93 119 0 225 4
+236 8 18 7 16 10 -15 23 -107 45 -266 78 -377 78 -36 0 -76 6 -92 15 -57 29
+-120 115 -201 276 -91 179 -124 223 -181 240 -21 7 -39 18 -39 26 0 7 3 13 8
+13 19 0 52 69 52 109 0 36 -6 49 -34 77 -45 45 -71 46 -61 2 21 -99 21 -100
+-34 -163 -71 -83 -95 -162 -89 -289 4 -72 11 -106 32 -151 14 -32 25 -60 23
+-62 -8 -7 -59 69 -88 132 -47 99 -57 178 -36 279 26 128 23 175 -18 255 -42
+85 -59 150 -51 195 l7 35 37 -41 c48 -54 109 -81 159 -72 21 4 78 27 127 51
+49 23 100 43 113 43 30 0 48 -36 62 -130 18 -109 38 -174 80 -259 21 -42 54
+-119 75 -172 66 -172 142 -249 247 -249 43 0 35 20 -21 60 -63 44 -100 99
+-136 198 -26 74 -64 170 -118 297 -28 69 -43 170 -52 367 -9 168 -19 177 -64
+52 l-22 -61 -56 1 c-45 0 -74 -8 -137 -36 -108 -48 -122 -52 -156 -37 -58 24
+-76 106 -39 186 l19 43 43 -20 c24 -11 55 -20 70 -20 41 0 88 48 137 141 57
+108 76 133 123 164 89 59 191 81 235 50z m7408 -410 c87 -130 127 -226 133
+-316 6 -111 -23 -159 -47 -76 -7 23 -38 98 -68 167 -53 121 -123 314 -123 341
+0 22 47 -30 105 -116z m-1191 -2256 c103 -14 199 -50 322 -119 107 -60 185
+-90 231 -90 19 0 23 -5 23 -29 0 -50 -17 -81 -44 -81 -45 0 -161 42 -306 110
+-255 120 -367 146 -600 137 -180 -7 -277 -28 -541 -112 -235 -76 -352 -108
+-476 -130 -96 -16 -333 -21 -318 -6 28 26 916 263 1150 307 158 29 407 35 559
+13z m431 -11 c22 -5 52 -19 68 -30 27 -20 73 -95 63 -105 -17 -17 -263 102
+-311 149 -12 12 120 2 180 -14z m-539 -163 c97 -18 179 -46 339 -113 66 -28
+156 -61 200 -72 44 -12 82 -24 84 -26 2 -2 -9 -31 -25 -64 -21 -45 -33 -60
+-49 -60 -48 0 -183 44 -339 110 -263 113 -430 147 -671 137 -159 -6 -214 -18
+-475 -102 -296 -94 -505 -127 -676 -106 -101 12 -205 40 -211 57 -6 19 61 32
+118 22 30 -5 117 -10 194 -10 174 -1 308 22 542 93 360 111 448 133 583 149
+98 11 285 4 386 -15z m-213 -180 c124 -22 235 -56 405 -124 138 -56 283 -101
+324 -101 23 0 23 -8 -1 -63 l-19 -44 -74 12 c-112 20 -179 41 -346 112 -212
+90 -312 114 -490 120 -173 7 -226 -1 -518 -72 -323 -79 -382 -89 -579 -89
+-141 0 -185 4 -255 21 -80 20 -240 85 -240 97 0 3 18 15 39 26 l39 20 68 -31
+c124 -57 298 -78 483 -60 143 15 199 26 501 106 135 35 265 68 290 73 72 16
+276 13 373 -3z m-143 -170 c79 -8 207 -44 425 -118 124 -43 227 -72 298 -83
+59 -9 107 -20 107 -23 0 -3 -13 -28 -28 -56 -25 -47 -29 -50 -62 -47 -81 8
+-170 36 -289 91 -249 117 -396 147 -666 138 -196 -7 -306 -33 -572 -135 -333
+-129 -489 -148 -726 -88 -215 55 -367 157 -367 246 0 29 13 25 87 -29 214
+-155 462 -213 713 -165 84 16 220 61 220 73 0 4 -55 -1 -122 -10 -325 -47
+-525 -11 -749 132 -79 51 -80 53 -58 65 34 19 57 17 90 -7 48 -34 200 -100
+279 -121 51 -14 121 -22 220 -25 185 -7 310 10 598 81 381 95 414 99 602 81z
+m-1971 -201 c62 -130 102 -185 187 -258 64 -54 134 -130 134 -145 0 -9 -171
+-34 -228 -33 -72 2 -129 35 -227 135 -81 82 -215 262 -215 288 0 11 122 70
+205 100 89 31 89 32 144 -87z m2092 -7 c53 -14 159 -50 236 -80 149 -59 273
+-97 316 -97 40 0 41 -16 2 -46 -68 -52 -154 -42 -324 38 -195 91 -361 130
+-566 131 -174 0 -303 -30 -468 -109 -40 -19 -80 -34 -90 -34 -23 0 -77 28 -77
+39 0 22 325 142 475 175 112 25 372 16 496 -17z m-1830 -103 c28 -14 90 -38
+137 -53 l87 -29 -72 -7 c-86 -8 -118 4 -183 70 -50 51 -42 56 31 19z m1721
+-54 c95 -21 185 -54 292 -107 37 -19 107 -47 154 -62 l86 -28 -50 -53 -50 -52
+-100 50 c-173 87 -203 93 -494 103 -140 4 -275 11 -300 14 -65 9 -203 45 -214
+55 -19 19 141 74 279 96 102 17 282 10 397 -16z m-872 -71 c103 -69 222 -118
+343 -140 34 -6 181 -14 327 -18 289 -8 343 -17 249 -44 -139 -40 -377 -49
+-535 -22 -115 21 -249 66 -346 117 -81 43 -194 126 -184 135 9 9 70 20 81 15
+6 -3 35 -22 65 -43z m-185 -29 c169 -147 370 -238 597 -271 174 -25 435 4 591
+66 65 26 117 28 117 5 0 -16 -80 -62 -150 -86 -198 -69 -499 -71 -767 -4 -205
+52 -402 167 -485 283 -17 24 -18 31 -7 38 28 17 59 8 104 -31z m-129 -56 c91
+-116 208 -198 362 -254 288 -105 683 -119 926 -35 39 14 101 45 138 71 64 43
+70 46 98 34 17 -7 30 -16 30 -20 0 -24 -171 -143 -277 -192 l-64 -31 -227 6
+c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
+-2 c80 -151 199 -265 356 -342 139 -68 382 -120 642 -137 51 -3 95 -9 97 -13
+8 -12 -139 -30 -248 -30 -210 0 -376 24 -496 73 -118 48 -258 166 -336 283
+-44 65 -107 203 -99 216 3 4 16 8 29 8 19 0 30 -12 55 -58z m-143 21 c41 -119
+119 -247 207 -340 32 -35 54 -63 48 -63 -6 0 -45 23 -87 51 -92 62 -148 129
+-213 257 -40 78 -45 94 -32 102 25 16 70 12 77 -7z m-149 -249 c15 -9 57 -54
+94 -99 45 -55 88 -96 129 -122 142 -89 177 -135 379 -498 67 -121 127 -226
+132 -232 6 -7 28 -13 49 -13 29 0 39 -4 39 -16 0 -14 -7 -15 -47 -9 -27 5 -88
+9 -138 11 -114 3 -113 3 -96 13 11 7 2 29 -45 105 -128 210 -315 447 -539 685
+-69 74 -131 143 -136 153 -24 44 115 61 179 22z"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#brainTissue)">
+    <path d="M 512,480 L 512.00,-220.00 A 700,700 0 0,1 693.17,-196.15 Z" fill="hsl(0, 90%, 65%)"/>
+    <path d="M 512,480 L 693.17,-196.15 A 700,700 0 0,1 862.00,-126.22 Z" fill="hsl(15, 90%, 65%)"/>
+    <path d="M 512,480 L 862.00,-126.22 A 700,700 0 0,1 1006.97,-14.97 Z" fill="hsl(30, 90%, 65%)"/>
+    <path d="M 512,480 L 1006.97,-14.97 A 700,700 0 0,1 1118.22,130.00 Z" fill="hsl(45, 90%, 65%)"/>
+    <path d="M 512,480 L 1118.22,130.00 A 700,700 0 0,1 1188.15,298.83 Z" fill="hsl(60, 90%, 65%)"/>
+    <path d="M 512,480 L 1188.15,298.83 A 700,700 0 0,1 1212.00,480.00 Z" fill="hsl(75, 90%, 65%)"/>
+    <path d="M 512,480 L 1212.00,480.00 A 700,700 0 0,1 1188.15,661.17 Z" fill="hsl(90, 90%, 65%)"/>
+    <path d="M 512,480 L 1188.15,661.17 A 700,700 0 0,1 1118.22,830.00 Z" fill="hsl(105, 90%, 65%)"/>
+    <path d="M 512,480 L 1118.22,830.00 A 700,700 0 0,1 1006.97,974.97 Z" fill="hsl(120, 90%, 65%)"/>
+    <path d="M 512,480 L 1006.97,974.97 A 700,700 0 0,1 862.00,1086.22 Z" fill="hsl(135, 90%, 65%)"/>
+    <path d="M 512,480 L 862.00,1086.22 A 700,700 0 0,1 693.17,1156.15 Z" fill="hsl(150, 90%, 65%)"/>
+    <path d="M 512,480 L 693.17,1156.15 A 700,700 0 0,1 512.00,1180.00 Z" fill="hsl(165, 90%, 65%)"/>
+    <path d="M 512,480 L 512.00,1180.00 A 700,700 0 0,1 330.83,1156.15 Z" fill="hsl(180, 90%, 65%)"/>
+    <path d="M 512,480 L 330.83,1156.15 A 700,700 0 0,1 162.00,1086.22 Z" fill="hsl(195, 90%, 65%)"/>
+    <path d="M 512,480 L 162.00,1086.22 A 700,700 0 0,1 17.03,974.97 Z" fill="hsl(210, 90%, 65%)"/>
+    <path d="M 512,480 L 17.03,974.97 A 700,700 0 0,1 -94.22,830.00 Z" fill="hsl(225, 90%, 65%)"/>
+    <path d="M 512,480 L -94.22,830.00 A 700,700 0 0,1 -164.15,661.17 Z" fill="hsl(240, 90%, 65%)"/>
+    <path d="M 512,480 L -164.15,661.17 A 700,700 0 0,1 -188.00,480.00 Z" fill="hsl(255, 90%, 65%)"/>
+    <path d="M 512,480 L -188.00,480.00 A 700,700 0 0,1 -164.15,298.83 Z" fill="hsl(270, 90%, 65%)"/>
+    <path d="M 512,480 L -164.15,298.83 A 700,700 0 0,1 -94.22,130.00 Z" fill="hsl(285, 90%, 65%)"/>
+    <path d="M 512,480 L -94.22,130.00 A 700,700 0 0,1 17.03,-14.97 Z" fill="hsl(300, 90%, 65%)"/>
+    <path d="M 512,480 L 17.03,-14.97 A 700,700 0 0,1 162.00,-126.22 Z" fill="hsl(315, 90%, 65%)"/>
+    <path d="M 512,480 L 162.00,-126.22 A 700,700 0 0,1 330.83,-196.15 Z" fill="hsl(330, 90%, 65%)"/>
+    <path d="M 512,480 L 330.83,-196.15 A 700,700 0 0,1 512.00,-220.00 Z" fill="hsl(345, 90%, 65%)"/>
+  </g>
+      </svg>
+    </div>
+
+    <div class="section-label">Mode</div>
+    <div style="position:relative">
+      <div id="daily-countdown" style="display:none;position:absolute;top:-18px;right:0;font-size:9px;letter-spacing:.08em;color:var(--dim);font-family:var(--mono)"></div>
+      <div class="diff-row">
+        <button class="diff-btn" onclick="setDiff('easy',this)">Easy<span class="diff-time">4.0 s</span></button>
+        <button class="diff-btn on" id="medium-btn" onclick="setDiff('medium',this)">Medium<span class="diff-time">2.5 s</span></button>
+        <button class="diff-btn" onclick="setDiff('hard',this)">Hard<span class="diff-time">1.5 s</span></button>
+        <button class="diff-btn" id="daily-btn" onclick="setDaily(this)">Daily<br>Challenge</button>
+      </div>
+    </div>
+
+    <button class="primary-btn" onclick="playSeed()">Play</button>
+
+    <div style="margin:10px 0 6px;text-align:center">
+      <button onclick="toggleSeedPanel(this)" style="background:transparent;border:none;color:var(--dim);font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;padding:0;-webkit-tap-highlight-color:transparent;transition:color .15s" onmouseover="this.style.color='var(--mute)'" onmouseout="this.style.color='var(--dim)'">have a seed? ▾</button>
+    </div>
+    <div id="seed-panel" style="display:none;margin-bottom:6px">
+      <div class="seed-field-row">
+        <input type="search" id="seed-input" placeholder="e.g. SLATE-1426" maxlength="14"
+          autocomplete="off" autocorrect="off" autocapitalize="characters"
+          spellcheck="false" role="searchbox"
+          oninput="this.value=this.value.toUpperCase()"
+          onkeydown="if(event.key==='Enter')playSeed()">
+        <button class="seed-random-btn" onclick="randomiseSeed()" title="Random seed">&#8645;</button>
+      </div>
+      <div style="margin:-4px 0 4px;min-height:16px">
+        <span style="font-size:9px;letter-spacing:.08em;color:var(--dim)">seed: </span><span id="home-seed-display" style="font-size:9px;letter-spacing:.08em;color:var(--mute)">—</span>
+      </div>
+      <p class="tip-text">Enter a friend's seed to play their exact colours</p>
+    </div>
+
+    <div class="divider" style="margin-top:10px"><span>or</span></div>
+    <button class="ghost-btn" onclick="openHistory()">View history</button>
+  </div>
+</div>
+
+<!-- GAME -->
+<div class="screen" id="game">
+  <div class="stage-panel">
+    <div class="stage-colour-wrap">
+      <div class="stage-colour" id="stage-colour"></div>
+
+      <!-- Arc countdown overlay (pre-round only) -->
+      <div id="arc-overlay" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:0">
+        <svg id="arc-svg" viewBox="0 0 120 120" style="width:52%;height:52%;overflow:visible">
+          <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="3"/>
+          <circle id="arc-track" cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="3"
+            stroke-dasharray="314.16" stroke-dashoffset="0" stroke-linecap="round"
+            transform="rotate(-90 60 60)" style="transition:stroke-dashoffset 0.7s ease"/>
+          <text id="arc-num" x="60" y="60" text-anchor="middle" dominant-baseline="central"
+            font-family="JetBrains Mono, monospace" font-size="38" font-weight="300"
+            fill="rgba(255,255,255,0.88)">3</text>
+        </svg>
+        <div style="font-size:9px;letter-spacing:.18em;color:rgba(255,255,255,0.3);text-transform:uppercase;margin-top:8px" id="arc-hint">Get ready</div>
+      </div>
+
+      <div class="stage-meta" id="stage-meta">
+        <div class="stage-countdown" id="stage-countdown"></div>
+        <div class="stage-hint" id="stage-hint">Memorise this colour</div>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill" style="width:100%"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ctrl-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div class="ctrl-dots" id="ctrl-dots" style="margin-bottom:0"></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="stage-round" style="font-size:9px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase">Round 01 / 05</span>
+        <button class="menu-btn" onclick="goHome()">Menu</button>
+      </div>
+    </div>
+    <div class="section-label" id="ctrl-mode-label">Memorise</div>
+    <div class="ctrl-preview" id="ctrl-preview">
+      <div class="ctrl-preview-label">Live preview</div>
+    </div>
+    <div class="sliders" id="sliders">
+      <div class="slider-row">
+        <span class="slider-axis">H</span>
+        <div class="slider-track" id="track-h">
+          <div class="slider-fill" id="fill-h" style="width:50%"></div>
+          <div class="slider-thumb" id="thumb-h" style="left:50%"></div>
+          <input class="slider-native" type="range" min="0" max="360" step="1" id="sl-h" value="180" oninput="updateSlider('h')">
+        </div>
+        <span class="slider-val" id="val-h">180°</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-axis">S</span>
+        <div class="slider-track" id="track-s">
+          <div class="slider-fill" id="fill-s" style="width:50%"></div>
+          <div class="slider-thumb" id="thumb-s" style="left:50%"></div>
+          <input class="slider-native" type="range" min="0" max="100" step="0.1" id="sl-s" value="50" oninput="updateSlider('s')">
+        </div>
+        <span class="slider-val" id="val-s">050%</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-axis">B</span>
+        <div class="slider-track" id="track-l">
+          <div class="slider-fill" id="fill-l" style="width:50%"></div>
+          <div class="slider-thumb" id="thumb-l" style="left:50%"></div>
+          <input class="slider-native" type="range" min="0" max="100" step="0.1" id="sl-l" value="50" oninput="updateSlider('l')">
+        </div>
+        <span class="slider-val" id="val-l">050%</span>
+      </div>
+    </div>
+    <button class="primary-btn" id="lock-btn" onclick="lockGuess()" style="display:none">Lock in colour</button>
+    <div class="ctrl-footer">
+      <div class="ctrl-seed-label">Seed</div>
+      <div class="ctrl-seed-val" id="ctrl-seed-val">—</div>
+    </div>  </div>
+</div>
+
+<!-- RESULT -->
+<div class="screen" id="result">
+  <div class="result-stage">
+    <div class="result-stage-wrap">
+      <div class="result-target-bg" id="res-target-bg"></div>
+      <div class="result-guess-bg" id="res-guess-bg"></div>
+      <div class="result-label-target">
+        <span style="font-size:7px;letter-spacing:.12em;opacity:.45">Target</span><br>
+        <span id="res-target-vals" style="font-size:10px;letter-spacing:.04em;line-height:1.8;display:inline-block">— — —</span>
+      </div>
+      <div class="result-label-guess">
+        <span style="font-size:7px;letter-spacing:.12em;opacity:.45">Guess</span><br>
+        <span id="res-guess-vals" style="font-size:10px;letter-spacing:.04em;line-height:1.8;display:inline-block">— — —</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="result-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div class="ctrl-wordmark" style="margin-bottom:0">Round <span id="res-rn">01</span> / 05</div>
+      <button class="menu-btn" onclick="goHome()">Menu</button>
+    </div>
+    <div class="result-score-big" id="res-score">—</div>
+    <div class="result-grade" id="res-grade">—</div>
+    <div class="axes-grid">
+      <div class="axis-cell">
+        <div class="axis-cell-label">Hue</div>
+        <div class="axis-cell-score" id="ax-h">—</div>
+        <div class="axis-cell-delta" id="ax-hd">—</div>
+      </div>
+      <div class="axis-cell">
+        <div class="axis-cell-label">Sat</div>
+        <div class="axis-cell-score" id="ax-s">—</div>
+        <div class="axis-cell-delta" id="ax-sd">—</div>
+      </div>
+      <div class="axis-cell">
+        <div class="axis-cell-label">Bri</div>
+        <div class="axis-cell-score" id="ax-l">—</div>
+        <div class="axis-cell-delta" id="ax-ld">—</div>
+      </div>
+    </div>
+    <button class="primary-btn" id="next-btn" onclick="nextRound()">Next round</button>
+    <div style="padding-top:16px;border-top:0.5px solid var(--line)">
+      <div class="ctrl-seed-label">Seed</div>
+      <div class="ctrl-seed-val" id="res-seed-val">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- END -->
+<div class="screen" id="end">
+  <div class="end-stage" id="end-stage"></div>
+
+  <div class="end-panel">
+    <div class="ctrl-wordmark">Game complete</div>
+    <div class="end-score" id="end-score">—</div>
+    <div class="end-grade" id="end-grade">—</div>
+    <div class="seed-reveal" onclick="copySeed()" style="cursor:pointer" title="Tap to copy">
+      <div class="seed-reveal-label">Seed — tap to copy</div>
+      <div class="seed-reveal-code" id="end-seed">—</div>
+      <div class="seed-reveal-hint">Send this to a friend to challenge them on the exact same colours</div>
+    </div>
+    <div class="hist-list" id="hist-list"></div>
+    <button class="ghost-btn" onclick="goHome()">New game</button>
+    <button class="ghost-btn" id="replay-btn" onclick="replaySeed()" style="display:none">Replay same seed</button>
+    <button class="primary-btn" id="copy-btn" onclick="shareSeed()">Share result</button>
+  </div>
+</div>
+
+<script>
+const WORDS = [
+  'ANVIL','BASALT','CIPHER','DELTA','EMBER','FLINT','GRAVEL','HATCH',
+  'INGOT','JACKAL','KRYPTON','LEDGE','MORTAR','NEXUS','OBSID','PIVOT',
+  'QUARTZ','RIDGE','SLATE','TUNDRA','UMBRA','VORTEX','WEDGE','XENON',
+  'YIELD','ZENITH','AGATE','BRACE','COBALT','DRIFT','EPOCH','FORGE',
+  'GROUT','HELIX','IODINE','JOULE','KNOLL','LATCH','MAST','NOTCH',
+  'OXIDE','PRISM','QUELL','RIVET','SCARP','TRUSS','ULNAR','VAULT',
+  'WELD','BEVEL','CHERT','FLUE','GUST','HAZE','INVAR','JOIST',
+  'KAOLIN','LINTEL','PUMICE','SHALE','TALLOW','WARREN','ZIRCON'
+];
+
+const DIFF_TIME = { easy: 4000, medium: 2500, hard: 1500 };
+
+let diff = 'medium';
+let seedNum = 0, seedStr = '', rng = null;
+let round = 0, colours = [], scores = [], history = [];
+let flashTimer = null;
+let isGuessing = false;
+
+function mulberry32(a) {
+  return function() {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function pad2(n) { return String(Math.round(n)).padStart(2, '0'); }
+function pad3(n) { return String(Math.round(n)).padStart(3, '0'); }
+
+function hsbToHsl(h, s, b) {
+  const l = b * (1 - s / 200);
+  const sl = l === 0 || l === 100 ? 0 : (b - l) / Math.min(l, 100 - l) * 100;
+  return { h, s: sl, l };
+}
+
+function hsl(h, s, b) {
+  const c = hsbToHsl(h, s, b);
+  return `hsl(${c.h},${c.s.toFixed(2)}%,${c.l.toFixed(2)}%)`;
+}
+
+function fmt(n) { return n.toFixed(2); }
+
+function grade(n) {
+  const tiers = [
+    { min: 97, msgs: ['Uncanny.', 'Inhuman.', 'Perfect recall.', 'Are you even human?', 'Flawless.'] },
+    { min: 90, msgs: ['Near perfect.', 'Razor sharp.', 'Exceptional.', 'Barely a trace off.', 'Almost flawless.'] },
+    { min: 80, msgs: ['Excellent.', 'Really strong.', 'Great eye.', 'Very precise.', 'Impressive recall.'] },
+    { min: 68, msgs: ['Good eye.', 'Solid.', 'Not bad at all.', 'You\'ve got it.', 'Nice work.'] },
+    { min: 52, msgs: ['Decent.', 'Getting there.', 'Room to grow.', 'Passable.', 'Nearly.'] },
+    { min: 35, msgs: ['Keep practising.', 'A bit off.', 'You\'ll get there.', 'Rough around the edges.', 'Needs work.'] },
+    { min: 0,  msgs: ['Way off.', 'Not quite.', 'Yikes.', 'Back to basics.', 'Colour blind?'] },
+  ];
+  const tier = tiers.find(t => n >= t.min);
+  return tier.msgs[Math.floor(Math.random() * tier.msgs.length)];
+}
+
+function hueDiff(a, b) {
+  let d = Math.abs(a - b);
+  return d > 180 ? 360 - d : d;
+}
+
+function axScore(d, range) {
+  return Math.max(0, 100 - (d / range) * 100);
+}
+
+// ── SEEDS ──
+function makeSeedStr() {
+  const wordIndex = Math.floor(Math.random() * WORDS.length);
+  const n = Math.floor(Math.random() * 9000) + 1000;
+  return WORDS[wordIndex] + '-' + String(n).padStart(4, '0');
+}
+
+
+function perceivedLuminance(h, s, b) {
+  return (b / 100) * (1 - (s / 100) * 0.3);
+}
+
+function labelColours(h, s, b) {
+  const lum = perceivedLuminance(h, s, b);
+  if (lum > 0.55) {
+    return { label: 'rgba(0,0,0,0.35)', val: 'rgba(0,0,0,0.75)' };
+  }
+  return { label: 'rgba(255,255,255,0.28)', val: 'rgba(255,255,255,0.75)' };
+}
+
+function parseSeed(s) {
+  const m = s.trim().toUpperCase().match(/^([A-Z]+)-(\d{3,4})$/);
+  if (!m) return false;
+  const wordIndex = WORDS.indexOf(m[1]);
+  if (wordIndex === -1) return false;
+  const num = parseInt(m[2]);
+  seedNum = wordIndex * 9000 + num;
+  seedStr = s.trim().toUpperCase();
+  rng = mulberry32(seedNum);
+  return true;
+}
+
+function buildColours() {
+  colours = [];
+  for (let i = 0; i < 5; i++) {
+    colours.push({
+      h: Math.round(rng() * 360),
+      s: Math.round((5 + rng() * 95) * 10) / 10,
+      b: Math.round((7 + rng() * 88) * 10) / 10
+    });
+  }
+}
+
+// ── SCREENS ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function freshSeedToInput() {
+  clearDailyMode();
+  closeSeedPanel();
+  // Always return highlight to medium
+  document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('on'));
+  const medBtn = document.getElementById('medium-btn');
+  if (medBtn) { medBtn.classList.add('on'); diff = 'medium'; }
+  const s = makeSeedStr();
+  document.getElementById('seed-input').value = s;
+  document.getElementById('home-seed-display').textContent = s;
+  refreshDailyBtn();
+}
+
+function goHome() {
+  freshSeedToInput();
+  showScreen('home');
+}
+
+let isDailyMode = false;
+let dailyCountdownInterval = null;
+
+function getDailyDateKey() {
+  const now = new Date();
+  return `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+}
+
+function getDailySeed() {
+  const dateNum = parseInt(getDailyDateKey());
+  const n = dateNum % 9000 + 1000;
+  const wordIndex = dateNum % WORDS.length;
+  return WORDS[wordIndex] + '-' + String(n).padStart(4, '0');
+}
+
+function getDailyRecord() {
+  try { return JSON.parse(localStorage.getItem('chromemory_daily') || 'null'); } catch(e) { return null; }
+}
+
+function saveDailyRecord(score) {
+  try { localStorage.setItem('chromemory_daily', JSON.stringify({ date: getDailyDateKey(), score })); } catch(e) {}
+}
+
+function dailyAlreadyPlayed() {
+  const rec = getDailyRecord();
+  return rec && rec.date === getDailyDateKey();
+}
+
+function msUntilMidnight() {
+  const now = new Date();
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  return midnight - now;
+}
+
+function formatCountdown(ms) {
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return `resets in ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function startDailyCountdown() {
+  stopDailyCountdown();
+  const el = document.getElementById('daily-countdown');
+  if (!el) return;
+  el.style.display = 'block';
+  function tick() { el.textContent = formatCountdown(msUntilMidnight()); }
+  tick();
+  dailyCountdownInterval = setInterval(tick, 1000);
+}
+
+function stopDailyCountdown() {
+  if (dailyCountdownInterval) { clearInterval(dailyCountdownInterval); dailyCountdownInterval = null; }
+  const el = document.getElementById('daily-countdown');
+  if (el) el.style.display = 'none';
+}
+
+function refreshDailyBtn() {
+  const btn = document.getElementById('daily-btn');
+  if (!btn) return;
+  if (dailyAlreadyPlayed()) {
+    const rec = getDailyRecord();
+    btn.innerHTML = `Daily<br>Challenge<span class="diff-time" style="color:var(--white);font-weight:500">score: ${rec.score.toFixed(2)}</span>`;
+    btn.disabled = true;
+    btn.style.opacity = '0.45';
+    btn.style.cursor = 'not-allowed';
+    startDailyCountdown();
+  } else {
+    btn.innerHTML = 'Daily<br>Challenge';
+    btn.disabled = false;
+    btn.style.opacity = '';
+    btn.style.cursor = '';
+    stopDailyCountdown();
+  }
+}
+
+function setDaily(btn) {
+  if (dailyAlreadyPlayed()) return;
+  isDailyMode = true;
+  diff = 'hard';
+  document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  const seed = getDailySeed();
+  openSeedPanel();
+  document.getElementById('seed-input').value = seed;
+  document.getElementById('home-seed-display').textContent = seed;
+  document.getElementById('seed-input').disabled = true;
+  document.querySelector('.seed-random-btn').style.opacity = '0.3';
+  document.querySelector('.seed-random-btn').style.pointerEvents = 'none';
+}
+
+function clearDailyMode() {
+  isDailyMode = false;
+  document.getElementById('seed-input').disabled = false;
+  document.querySelector('.seed-random-btn').style.opacity = '';
+  document.querySelector('.seed-random-btn').style.pointerEvents = '';
+}
+
+function setDiff(d, btn) {
+  clearDailyMode();
+  diff = d;
+  document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+}
+
+function toggleSeedPanel(btn) {
+  const panel = document.getElementById('seed-panel');
+  const open = panel.style.display === 'none';
+  panel.style.display = open ? 'block' : 'none';
+  btn.textContent = open ? 'have a seed? ▴' : 'have a seed? ▾';
+  if (open) document.getElementById('seed-input').focus();
+}
+
+function openSeedPanel() {
+  const panel = document.getElementById('seed-panel');
+  panel.style.display = 'block';
+  const btn = document.querySelector('[onclick="toggleSeedPanel(this)"]');
+  if (btn) btn.textContent = 'have a seed? ▴';
+}
+
+function closeSeedPanel() {
+  const panel = document.getElementById('seed-panel');
+  panel.style.display = 'none';
+  const btn = document.querySelector('[onclick="toggleSeedPanel(this)"]');
+  if (btn) btn.textContent = 'have a seed? ▾';
+}
+
+function buildDots(filled) {
+  const el = document.getElementById('ctrl-dots');
+  el.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const d = document.createElement('div');
+    d.className = 'ctrl-dot' + (i < filled ? ' on' : '');
+    el.appendChild(d);
+  }
+}
+
+// ── GAME FLOW ──
+function randomiseSeed() {
+  clearDailyMode();
+  const s = makeSeedStr();
+  document.getElementById('seed-input').value = s;
+  document.getElementById('home-seed-display').textContent = s;
+  refreshDailyBtn();
+}
+
+function playSeed() {
+  const panel = document.getElementById('seed-panel');
+  const panelOpen = panel.style.display !== 'none';
+  let inp = document.getElementById('seed-input').value.trim();
+  if (!panelOpen) {
+    inp = makeSeedStr();
+  }
+  if (!parseSeed(inp)) { alert('Invalid seed — try ANVIL-7823'); return; }
+  document.getElementById('home-seed-display').textContent = seedStr;
+  rng = mulberry32(seedNum);
+  buildColours();
+  startGame();
+}
+
+function startGame() {
+  round = 0; scores = []; history = [];
+  document.getElementById('ctrl-seed-val').textContent = seedStr;
+  startRound();
+}
+
+function startRound() {
+  round++;
+  isGuessing = false;
+  const c = colours[round - 1];
+
+  showScreen('game');
+  buildDots(round - 1);
+  document.getElementById('stage-round').textContent = 'Round ' + pad2(round) + ' / 05';
+  document.getElementById('ctrl-mode-label').textContent = 'Get ready';
+  document.getElementById('lock-btn').style.display = 'none';
+
+  // Blank all slider tracks immediately — no peeking
+  ['h','s','l'].forEach(a => {
+    document.getElementById('track-' + a).style.background = 'var(--line2)';
+  });
+
+  const sliders = document.getElementById('sliders');
+  sliders.style.opacity = '0.18';
+  sliders.style.pointerEvents = 'none';
+  document.getElementById('ctrl-preview').style.background = 'var(--bg3)';
+
+  // hide colour during pre-countdown
+  document.getElementById('stage-colour').style.background = 'var(--bg2)';
+
+  const pf = document.getElementById('progress-fill');
+  pf.style.transition = 'none';
+  pf.style.width = '100%';
+
+  // Show arc overlay, hide stage-meta during pre-countdown
+  const arcOverlay = document.getElementById('arc-overlay');
+  const meta = document.getElementById('stage-meta');
+  arcOverlay.style.display = 'flex';
+  meta.style.display = 'none';
+
+  const arcNum = document.getElementById('arc-num');
+  const arcTrack = document.getElementById('arc-track');
+  const circumference = 314.16;
+
+  let preCount = 3;
+  arcNum.textContent = preCount;
+  arcTrack.style.transition = 'none';
+  arcTrack.style.strokeDashoffset = '0';
+
+  if (flashTimer) clearInterval(flashTimer);
+
+  function stepArc() {
+    preCount--;
+    if (preCount <= 0) {
+      // Show 0, sweep to full circle, then hide and reveal colour
+      arcNum.textContent = '0';
+      arcTrack.style.transition = 'stroke-dashoffset 0.7s ease';
+      arcTrack.style.strokeDashoffset = circumference;
+      flashTimer = setTimeout(() => {
+        arcOverlay.style.display = 'none';
+        meta.style.display = '';
+        flashColour(c);
+      }, 750);
+    } else {
+      arcNum.textContent = preCount;
+      arcTrack.style.transition = 'stroke-dashoffset 0.7s ease';
+      arcTrack.style.strokeDashoffset = ((3 - preCount) / 3) * circumference;
+      flashTimer = setTimeout(stepArc, 800);
+    }
+  }
+
+  flashTimer = setTimeout(stepArc, 800);
+}
+
+function flashColour(c) {
+  document.getElementById('stage-colour').style.background = hsl(c.h, c.s, c.b);
+  document.getElementById('ctrl-mode-label').textContent = 'Memorise';
+
+  const sc = labelColours(c.h, c.s, c.b);
+  const cdown = document.getElementById('stage-countdown');
+  const hint = document.getElementById('stage-hint');
+
+  cdown.style.color = sc.val;
+  hint.style.color = sc.label;
+  hint.textContent = 'Memorise this colour';
+
+  const pf = document.getElementById('progress-fill');
+  const total = DIFF_TIME[diff];
+  const start = Date.now();
+
+  requestAnimationFrame(() => {
+    pf.style.transition = `width ${total}ms linear`;
+    pf.style.width = '0%';
+  });
+
+  if (flashTimer) clearInterval(flashTimer);
+  flashTimer = setInterval(() => {
+    const rem = Math.max(0, total - (Date.now() - start));
+    cdown.textContent = (rem / 1000).toFixed(1);
+    if (rem <= 0) { clearInterval(flashTimer); beginGuess(); }
+  }, 50);
+}
+
+function beginGuess() {
+  isGuessing = false;
+  document.getElementById('stage-colour').style.background = 'var(--bg2)';
+  document.getElementById('stage-countdown').style.opacity = '0';
+  document.getElementById('stage-hint').textContent = '—';
+
+  // Hide slider gradients so they can't be read during memorise phase
+  ['h','s','l'].forEach(a => {
+    document.getElementById('track-' + a).style.background = 'var(--line2)';
+  });
+  document.getElementById('ctrl-preview').style.background = 'transparent';
+
+  const interstitials = ['Remember.', 'Lock it in.', 'Hold that colour.', 'What did you see?', 'Trust your memory.'];
+  const msg = interstitials[Math.floor(Math.random() * interstitials.length)];
+  const cdown = document.getElementById('stage-countdown');
+  cdown.style.fontSize = 'clamp(18px, 2.5vw, 26px)';
+  cdown.style.letterSpacing = '.12em';
+  cdown.style.color = 'var(--sub)';
+  cdown.textContent = msg;
+  cdown.style.opacity = '1';
+
+  setTimeout(() => {
+    cdown.style.opacity = '0';
+    setTimeout(() => {
+      cdown.style.fontSize = '';
+      cdown.style.letterSpacing = '';
+      cdown.style.color = '';
+    }, 400);
+    document.getElementById('stage-hint').textContent = window.innerWidth <= 640 ? 'Your guess' : 'Dial in your guess';
+    document.getElementById('ctrl-mode-label').textContent = 'Your guess';
+    document.getElementById('lock-btn').style.display = 'block';
+
+    const sliders = document.getElementById('sliders');
+    sliders.style.opacity = '1';
+    sliders.style.pointerEvents = 'auto';
+
+    isGuessing = true;
+    setSliderVal('h', 180);
+    setSliderVal('s', 50);
+    setSliderVal('l', 50);
+    updateSliderGradients();
+    refreshPreview();
+  }, 1000);
+}
+
+function setSliderVal(axis, val) {
+  document.getElementById('sl-' + axis).value = val;
+  updateSlider(axis);
+}
+
+function updateSlider(axis) {
+  const input = document.getElementById('sl-' + axis);
+  const val = +input.value;
+  const max = +input.max;
+  const pct = (val / max) * 100;
+
+  document.getElementById('thumb-' + axis).style.left = pct + '%';
+
+  if (axis === 'h') document.getElementById('val-h').textContent = pad3(val) + '°';
+  if (axis === 's') document.getElementById('val-s').textContent = parseFloat(val).toFixed(1) + '%';
+  if (axis === 'l') document.getElementById('val-l').textContent = parseFloat(val).toFixed(1) + '%';
+
+  refreshPreview();
+  updateSliderGradients();
+}
+
+function updateSliderGradients() {
+  if (!isGuessing) return;
+  const h = +document.getElementById('sl-h').value;
+  const s = +document.getElementById('sl-s').value;
+  const l = +document.getElementById('sl-l').value;
+
+  // Hue: full spectrum
+  const hueStops = [];
+  for (let i = 0; i <= 360; i += 30) hueStops.push(`hsl(${i},100%,50%)`);
+  document.getElementById('track-h').style.background = `linear-gradient(to right, ${hueStops.join(',')})`;
+
+  // Saturation: grey → vivid at current hue and brightness
+  document.getElementById('track-s').style.background =
+    `linear-gradient(to right, hsl(${h},0%,${l}%), hsl(${h},100%,${l}%))`;
+
+  // Brightness: black → white (with hue/sat tint in middle)
+  document.getElementById('track-l').style.background =
+    `linear-gradient(to right, hsl(${h},${s}%,0%), hsl(${h},${s}%,50%), hsl(${h},${s}%,100%))`;
+}
+
+function refreshPreview() {
+  if (!isGuessing) return;
+  const h = +document.getElementById('sl-h').value;
+  const s = +document.getElementById('sl-s').value;
+  const l = +document.getElementById('sl-l').value;
+  const colour = hsl(h, s, l);
+  document.getElementById('ctrl-preview').style.background = colour;
+  // On mobile, mirror live preview into the stage colour block
+  if (window.innerWidth <= 640) {
+    document.getElementById('stage-colour').style.background = colour;
+  }
+}
+
+function countUp(el, from, to, duration, onDone) {
+  const start = performance.now();
+  function tick(now) {
+    const p = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = fmt(from + (to - from) * ease);
+    if (p < 1) { requestAnimationFrame(tick); }
+    else { el.textContent = fmt(to); if (onDone) onDone(); }
+  }
+  requestAnimationFrame(tick);
+}
+
+function lockGuess() {
+  // Reset stage block back to neutral before switching to result screen
+  if (window.innerWidth <= 640) {
+    document.getElementById('stage-colour').style.background = 'var(--bg2)';
+  }
+  const gh = +document.getElementById('sl-h').value;
+  const gs = +document.getElementById('sl-s').value;
+  const gb = +document.getElementById('sl-l').value;
+  const tc = colours[round - 1];
+
+  const dh = hueDiff(tc.h, gh);
+  const ds = Math.abs(tc.s - gs);
+  const db = Math.abs(tc.b - gb);
+
+  // Perceptual forgiveness —
+  // Sub-15% brightness: hue & sat barely visible, widen their tolerance.
+  // Sub-10% saturation: hue is meaningless on near-greys, widen hue tolerance.
+  const darkness = Math.max(0, 15 - tc.b) / 15;   // 0 at B>=15, 1 at B=0
+  const greyness = Math.max(0, 10 - tc.s) / 10;   // 0 at S>=10, 1 at S=0
+  const darkMult = 1 + 1.5 * Math.pow(darkness, 2);
+  const lowSatMult = darkness > 0 ? 1 + Math.pow(1 - tc.s / 100, 2) : 1;
+  const greyMult = 1 + 2.0 * Math.pow(greyness, 2); // up to 3x hue forgiveness at S=0
+
+  const sh = axScore(dh, 90 * darkMult * lowSatMult * greyMult);
+  const ss = axScore(ds, 50 * darkMult);
+  const sb = axScore(db, 50);
+
+  // Dynamic weights — below 40% saturation, hue weight transfers to saturation.
+  // At S=40%: wH=0.50, wS=0.30. At S=0%: wH=0.15, wS=0.65.
+  const SAT_THRESHOLD = 40;
+  const satFactor = Math.max(0, Math.min(1, (SAT_THRESHOLD - tc.s) / SAT_THRESHOLD)); // 0 at S>=40, 1 at S=0
+  const transferH = 0.35 * Math.pow(satFactor, 1.5); // up to 0.35 transfers from hue
+  const wH = 0.50 - transferH;
+  const wS = 0.30 + transferH;
+  const wB = 0.20;
+
+  const tot = sh * wH + ss * wS + sb * wB;
+
+  scores.push(tot);
+  history.push({ t: { ...tc }, g: { h: gh, s: gs, b: gb }, sh, ss, sb, tot, dh, ds, db });
+
+  document.getElementById('res-rn').textContent = pad2(round);
+  document.getElementById('res-seed-val').textContent = seedStr;
+  document.getElementById('res-target-bg').style.background = hsl(tc.h, tc.s, tc.b);
+  document.getElementById('res-guess-bg').style.background = hsl(gh, gs, gb);
+  document.getElementById('res-target-vals').innerHTML =
+    `<span style="opacity:.45">H</span> ${pad3(tc.h)}°<br>` +
+    `<span style="opacity:.45">S</span> ${tc.s.toFixed(1)}%<br>` +
+    `<span style="opacity:.45">B</span> ${tc.b.toFixed(1)}%`;
+  document.getElementById('res-guess-vals').innerHTML =
+    `<span style="opacity:.45">H</span> ${pad3(gh)}°<br>` +
+    `<span style="opacity:.45">S</span> ${gs.toFixed(1)}%<br>` +
+    `<span style="opacity:.45">B</span> ${gb.toFixed(1)}%`;
+
+  const tc_cols = labelColours(tc.h, tc.s, tc.b);
+  const gc_cols = labelColours(gh, gs, gb);
+  document.getElementById('res-target-vals').style.color = tc_cols.val;
+  document.getElementById('res-guess-vals').style.color = gc_cols.val;
+  const tLabel = document.getElementById('res-target-vals').parentElement;
+  const gLabel = document.getElementById('res-guess-vals').parentElement;
+  tLabel.querySelector('span').style.color = tc_cols.label;
+  gLabel.querySelector('span').style.color = gc_cols.label;
+  document.getElementById('res-score').textContent = '—';
+  document.getElementById('res-grade').textContent = '';
+  document.getElementById('ax-h').textContent = '—';
+  document.getElementById('ax-hd').textContent = '';
+  document.getElementById('ax-s').textContent = '—';
+  document.getElementById('ax-sd').textContent = '';
+  document.getElementById('ax-l').textContent = '—';
+  document.getElementById('ax-ld').textContent = '';
+  document.getElementById('next-btn').textContent = round < 5 ? 'Next round' : 'See final score';
+
+  showScreen('result');
+
+  // count up to score over 800ms then reveal axes
+  countUp(document.getElementById('res-score'), 0, tot, 800, () => {
+    document.getElementById('res-grade').textContent = grade(tot);
+    document.getElementById('ax-h').textContent = fmt(sh);
+    document.getElementById('ax-hd').textContent = dh + '° off';
+    document.getElementById('ax-s').textContent = fmt(ss);
+    document.getElementById('ax-sd').textContent = ds.toFixed(1) + '% off';
+    document.getElementById('ax-l').textContent = fmt(sb);
+    document.getElementById('ax-ld').textContent = db.toFixed(1) + '% off';
+  });
+}
+
+function nextRound() {
+  if (round < 5) { startRound(); } else { showEnd(); }
+}
+
+function showEnd() {
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+
+  document.getElementById('end-seed').textContent = seedStr;
+  document.getElementById('end-score').textContent = '—';
+  document.getElementById('end-grade').textContent = '';
+
+  const stage = document.getElementById('end-stage');
+  stage.innerHTML = '';
+
+  history.forEach((r, i) => {
+    const row = document.createElement('div');
+    row.className = 'end-row';
+
+    // square diagonal swatch
+    const swatch = document.createElement('div');
+    swatch.className = 'end-swatch';
+
+    const tBg = document.createElement('div');
+    tBg.className = 'end-swatch-target';
+    tBg.style.background = hsl(r.t.h, r.t.s, r.t.b);
+
+    const gBg = document.createElement('div');
+    gBg.className = 'end-swatch-guess';
+    gBg.style.background = hsl(r.g.h, r.g.s, r.g.b);
+
+    swatch.appendChild(tBg);
+    swatch.appendChild(gBg);
+
+    // info block
+    const info = document.createElement('div');
+    info.className = 'end-row-info';
+    info.innerHTML = `
+      <div class="end-row-rnd">Round ${i + 1}</div>
+      <div class="end-row-score">${fmt(r.tot)}</div>
+      <div class="end-row-axes">
+        <div class="end-row-axis">
+          <div class="end-row-axis-label">Hue</div>
+          <div class="end-row-axis-val">${fmt(r.sh)}</div>
+          <div class="end-row-axis-delta">${r.dh}° off</div>
+        </div>
+        <div class="end-row-axis">
+          <div class="end-row-axis-label">Sat</div>
+          <div class="end-row-axis-val">${fmt(r.ss)}</div>
+          <div class="end-row-axis-delta">${r.ds.toFixed(1)}% off</div>
+        </div>
+        <div class="end-row-axis">
+          <div class="end-row-axis-label">Bri</div>
+          <div class="end-row-axis-val">${fmt(r.sb)}</div>
+          <div class="end-row-axis-delta">${r.db.toFixed(1)}% off</div>
+        </div>
+      </div>
+    `;
+
+    row.appendChild(swatch);
+    row.appendChild(info);
+    stage.appendChild(row);
+  });
+
+  // keep hist-list empty — breakdown is now in the stage
+  document.getElementById('hist-list').innerHTML = '';
+  document.getElementById('copy-btn').textContent = 'Copy seed';
+  document.getElementById('replay-btn').style.display = 'block';
+  showScreen('end');
+
+  countUp(document.getElementById('end-score'), 0, avg, 1000, () => {
+    document.getElementById('end-grade').textContent = grade(avg) + ' — avg per round';
+  });
+
+  saveToHistory(avg);
+}
+
+function shareText() {
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+  return `Chromemory — ${seedStr}\nMy score: ${fmt(avg)}\nCan you beat it?`;
+}
+
+function shareSeed() {
+  const text = shareText();
+  const btn = document.getElementById('copy-btn');
+
+  // Native share sheet on mobile (iOS/Android)
+  if (navigator.share) {
+    navigator.share({ text })
+      .catch(() => {}); // user cancelled — no need to do anything
+    return;
+  }
+
+  // Desktop fallback — copy to clipboard
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Share result'; }, 2000);
+  }).catch(() => prompt('Copy and share:', text));
+}
+
+function copySeed() {
+  // Legacy — still used by seed-reveal tap on desktop
+  const text = shareText();
+  const label = document.querySelector('.seed-reveal-label');
+  navigator.clipboard.writeText(text).then(() => {
+    const b = document.getElementById('copy-btn');
+    b.textContent = 'Copied!';
+    if (label) label.textContent = 'Copied!';
+    setTimeout(() => {
+      b.textContent = 'Share result';
+      if (label) label.textContent = 'Seed — tap to copy';
+    }, 2000);
+  }).catch(() => prompt('Copy and share:', text));
+}
+
+function replaySeed() {
+  rng = mulberry32(seedNum);
+  buildColours();
+  startGame();
+}
+
+// ── HISTORY ──
+function saveToHistory(avg) {
+  const entry = {
+    seed: seedStr,
+    score: avg,
+    diff,
+    date: new Date().toISOString(),
+    rounds: history.map(r => ({ ...r }))
+  };
+  let h = loadHistory();
+  h.unshift(entry);
+  h = h.slice(0, 50);
+  try { localStorage.setItem('chromemory_history', JSON.stringify(h)); } catch(e) {}
+  if (isDailyMode) saveDailyRecord(avg);
+}
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem('chromemory_history') || '[]'); } catch(e) { return []; }
+}
+
+function openHistory() {
+  const h = loadHistory();
+  const list = document.getElementById('history-list');
+  if (!h.length) {
+    list.innerHTML = `<div style="font-size:11px;color:var(--dim);text-align:center;padding:24px 0">No games yet.</div>`;
+  } else {
+    list.innerHTML = h.map((e, i) => {
+      const d = new Date(e.date);
+      const dateStr = d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+      return `<div onclick="openDetail(${i})" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid var(--line);cursor:pointer" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">
+        <div>
+          <div style="font-size:12px;letter-spacing:.08em;color:var(--bright);margin-bottom:2px">${e.seed}</div>
+          <div style="font-size:9px;letter-spacing:.08em;color:var(--dim);text-transform:uppercase">${dateStr} · ${e.diff}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:18px;font-weight:300;color:var(--bright);letter-spacing:-.01em">${fmt(e.score)}</div>
+          <div style="font-size:9px;color:var(--dim);margin-top:1px">${grade(e.score)}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('history-modal').style.display = 'flex';
+}
+
+function openDetail(i) {
+  const h = loadHistory();
+  const e = h[i];
+  if (!e) return;
+  document.getElementById('detail-title').textContent = e.seed;
+  const d = new Date(e.date);
+  const dateStr = d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+  let html = `<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+    <div style="font-size:36px;font-weight:300;color:var(--bright);letter-spacing:-.02em;line-height:1">${fmt(e.score)}</div>
+    <div style="font-size:10px;letter-spacing:.12em;color:var(--mute);text-transform:uppercase">${grade(e.score)}</div>
+  </div>
+  <div style="font-size:9px;color:var(--dim);letter-spacing:.08em;margin-bottom:16px">${dateStr} · ${e.diff}</div>
+  <div style="height:0.5px;background:var(--line);margin-bottom:14px"></div>`;
+
+  html += e.rounds.map((r, ri) => {
+    const tCol = hsl(r.t.h, r.t.s, r.t.b);
+    const gCol = hsl(r.g.h, r.g.s, r.g.b);
+    return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+      <div style="width:48px;height:48px;border-radius:8px;overflow:hidden;position:relative;flex-shrink:0">
+        <div style="position:absolute;inset:0;background:${tCol};clip-path:polygon(0 0,100% 0,100% 100%)"></div>
+        <div style="position:absolute;inset:0;background:${gCol};clip-path:polygon(0 0,0 100%,100% 100%)"></div>
+      </div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+          <div style="font-size:9px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Round ${ri+1}</div>
+          <div style="font-size:17px;font-weight:300;color:var(--bright)">${fmt(r.tot)}</div>
+        </div>
+        <div style="display:flex;gap:0">
+          <div style="flex:1;text-align:center">
+            <div style="font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">H</div>
+            <div style="font-size:11px;color:var(--sub)">${fmt(r.sh)}</div>
+            <div style="font-size:8px;color:var(--dim)">${r.dh}° off</div>
+          </div>
+          <div style="flex:1;text-align:center">
+            <div style="font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">S</div>
+            <div style="font-size:11px;color:var(--sub)">${fmt(r.ss)}</div>
+            <div style="font-size:8px;color:var(--dim)">${r.ds.toFixed(1)}% off</div>
+          </div>
+          <div style="flex:1;text-align:center">
+            <div style="font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">B</div>
+            <div style="font-size:11px;color:var(--sub)">${fmt(r.sb)}</div>
+            <div style="font-size:8px;color:var(--dim)">${r.db.toFixed(1)}% off</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('detail-body').innerHTML = html;
+  document.getElementById('history-detail-modal').style.display = 'flex';
+}
+
+updateSlider('h');
+updateSlider('s');
+updateSlider('l');
+freshSeedToInput();
+
+// ── MOBILE SWIPE ZONES ──
+// On touch devices, make the entire slider-row a swipe target
+// so users don't need to land on the tiny thumb
+(function() {
+  if (!('ontouchstart' in window)) return;
+
+  const axes = [
+    { axis: 'h', min: 0, max: 360, step: 1 },
+    { axis: 's', min: 0, max: 100, step: 0.1 },
+    { axis: 'l', min: 0, max: 100, step: 0.1 },
+  ];
+
+  axes.forEach(({ axis, min, max, step }) => {
+    const row = document.getElementById('track-' + axis).closest('.slider-row');
+    const input = document.getElementById('sl-' + axis);
+    let startX = null;
+    let startVal = null;
+
+    // Sensitivity: full swipe across screen (~360px) = full range
+    const sensitivity = (max - min) / 280;
+
+    row.addEventListener('touchstart', e => {
+      startX = e.touches[0].clientX;
+      startVal = +input.value;
+      e.preventDefault();
+    }, { passive: false });
+
+    row.addEventListener('touchmove', e => {
+      if (startX === null) return;
+      const dx = e.touches[0].clientX - startX;
+      let newVal = startVal + dx * sensitivity;
+      newVal = Math.round(newVal / step) * step;
+      newVal = Math.max(min, Math.min(max, newVal));
+      input.value = newVal;
+      updateSlider(axis);
+      e.preventDefault();
+    }, { passive: false });
+
+    row.addEventListener('touchend', () => {
+      startX = null;
+      startVal = null;
+    });
+  });
+})();
+</script>
+<!-- HISTORY MODAL -->
+<div id="history-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg2);border:0.5px solid var(--line2);border-radius:12px;max-width:480px;width:100%;max-height:80vh;display:flex;flex-direction:column;position:relative">
+    <div style="padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div style="font-size:11px;letter-spacing:.22em;color:var(--dim);text-transform:uppercase">History</div>
+      <button id="history-modal-close" style="background:transparent;border:none;color:var(--dim);font-size:18px;cursor:pointer;line-height:1;font-family:var(--mono)">×</button>
+    </div>
+    <div id="history-list" style="overflow-y:auto;padding:12px 20px 20px;flex:1"></div>
+  </div>
+</div>
+
+<!-- HISTORY DETAIL MODAL -->
+<div id="history-detail-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:110;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg2);border:0.5px solid var(--line2);border-radius:12px;max-width:480px;width:100%;max-height:80vh;display:flex;flex-direction:column;position:relative">
+    <div style="padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div id="detail-title" style="font-size:11px;letter-spacing:.22em;color:var(--dim);text-transform:uppercase">—</div>
+      <button id="history-detail-modal-close" style="background:transparent;border:none;color:var(--dim);font-size:18px;cursor:pointer;line-height:1;font-family:var(--mono)">×</button>
+    </div>
+    <div id="detail-body" style="overflow-y:auto;padding:12px 20px 20px;flex:1"></div>
+  </div>
+</div>
+
+<!-- INFO MODAL -->
+<div id="info-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeInfoModal()">
+  <div style="background:var(--bg2);border:0.5px solid var(--line2);border-radius:12px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;padding:28px 24px;position:relative">
+    <button onclick="closeInfoModal()" style="position:absolute;top:14px;right:14px;background:transparent;border:none;color:var(--dim);font-size:18px;cursor:pointer;line-height:1;font-family:var(--mono)">×</button>
+
+    <div style="font-size:11px;letter-spacing:.22em;color:var(--dim);text-transform:uppercase;margin-bottom:16px">How to play</div>
+
+    <div style="font-size:13px;color:var(--sub);line-height:1.7;margin-bottom:20px">
+      A colour is shown for a few seconds. Memorise it. Then use the sliders to recreate it as accurately as you can. Five rounds per game — your score is averaged across all of them.
+    </div>
+
+    <div style="height:0.5px;background:var(--line);margin-bottom:20px"></div>
+
+    <div style="font-size:11px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;margin-bottom:12px">The three axes</div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div style="width:32px;height:12px;border-radius:6px;flex-shrink:0;margin-top:3px;background:linear-gradient(to right,hsl(0,100%,50%),hsl(120,100%,50%),hsl(240,100%,50%),hsl(360,100%,50%))"></div>
+        <div>
+          <div style="font-size:10px;letter-spacing:.14em;color:var(--text);text-transform:uppercase;margin-bottom:2px">H — Hue</div>
+          <div style="font-size:11px;color:var(--mute);line-height:1.6">The base colour — red, green, blue, etc. Measured in degrees around a colour wheel, 0–360.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div style="width:32px;height:12px;border-radius:6px;flex-shrink:0;margin-top:3px;background:linear-gradient(to right,hsl(200,0%,50%),hsl(200,100%,50%))"></div>
+        <div>
+          <div style="font-size:10px;letter-spacing:.14em;color:var(--text);text-transform:uppercase;margin-bottom:2px">S — Saturation</div>
+          <div style="font-size:11px;color:var(--mute);line-height:1.6">How vivid or washed out. 0% is grey, 100% is fully vivid.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div style="width:32px;height:12px;border-radius:6px;flex-shrink:0;margin-top:3px;background:linear-gradient(to right,#000,hsl(200,60%,50%),#fff)"></div>
+        <div>
+          <div style="font-size:10px;letter-spacing:.14em;color:var(--text);text-transform:uppercase;margin-bottom:2px">B — Brightness</div>
+          <div style="font-size:11px;color:var(--mute);line-height:1.6">How light or dark. 0% is black, 100% is full brightness.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:0.5px;background:var(--line);margin-bottom:20px"></div>
+
+    <div style="font-size:11px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;margin-bottom:12px">Scoring</div>
+
+    <div style="font-size:11px;color:var(--mute);line-height:1.7;margin-bottom:12px">
+      Each axis is scored 0–100 based on how close your guess was. They're then combined: Hue counts for 50%, Saturation 30%, Brightness 20%.
+    </div>
+
+    <div style="background:var(--bg3);border-radius:6px;padding:12px 14px;margin-bottom:20px;display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Hue</div>
+        <div style="font-size:11px;color:var(--sub)">50% of total</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Saturation</div>
+        <div style="font-size:11px;color:var(--sub)">30% of total</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Brightness</div>
+        <div style="font-size:11px;color:var(--sub)">20% of total</div>
+      </div>
+    </div>
+
+    <div style="height:0.5px;background:var(--line);margin-bottom:20px"></div>
+
+    <div style="font-size:11px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;margin-bottom:12px">Seeds</div>
+
+    <div style="font-size:11px;color:var(--mute);line-height:1.7">
+      Every game has a seed — a short code that locks in the exact set of colours. Share it with a friend to challenge them on the same colours. Enter their seed on the home screen to play their game.
+    </div>
+
+    <div style="height:0.5px;background:var(--line);margin-top:20px;margin-bottom:16px"></div>
+
+    <div style="font-size:10px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;text-align:center">Made by snazzygaz</div>
+
+  </div>
+</div>
+
+<script>
+// ── BACK BUTTON HANDLING ──
+const navStack = [];
+let backPressedOnce = false;
+let backToastTimer  = null;
+
+function ensureSentinel() {
+  window.history.pushState({ sentinel: true }, '');
+}
+
+const _origShowScreen = showScreen;
+showScreen = function(id) {
+  _origShowScreen(id);
+  if (id === 'home') { navStack.length = 0; } else { navStack.push({ type: 'screen', id }); }
+  ensureSentinel();
+};
+
+const _origOpenHistory = openHistory;
+openHistory = function() {
+  _origOpenHistory();
+  navStack.push({ type: 'modal', id: 'history-modal' });
+  ensureSentinel();
+};
+
+const _origOpenDetail = openDetail;
+openDetail = function(i) {
+  _origOpenDetail(i);
+  navStack.push({ type: 'modal', id: 'history-detail-modal' });
+  ensureSentinel();
+};
+
+function openInfoModal() {
+  document.getElementById('info-modal').style.display = 'flex';
+  navStack.push({ type: 'modal', id: 'info-modal' });
+  ensureSentinel();
+}
+function closeInfoModal() {
+  document.getElementById('info-modal').style.display = 'none';
+  if (navStack.length && navStack[navStack.length - 1].id === 'info-modal') navStack.pop();
+}
+
+function _closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'none';
+  while (navStack.length && navStack[navStack.length - 1].id === id) navStack.pop();
+}
+
+document.getElementById('history-modal').addEventListener('click', function(e) {
+  if (e.target === this) _closeModal('history-modal');
+});
+document.getElementById('history-modal-close').addEventListener('click', function() {
+  _closeModal('history-modal');
+});
+document.getElementById('history-detail-modal').addEventListener('click', function(e) {
+  if (e.target === this) _closeModal('history-detail-modal');
+});
+document.getElementById('history-detail-modal-close').addEventListener('click', function() {
+  _closeModal('history-detail-modal');
+});
+
+window.addEventListener('popstate', function() {
+  const top = navStack[navStack.length - 1];
+  if (!top) {
+    if (backPressedOnce) { clearTimeout(backToastTimer); backPressedOnce = false; return; }
+    backPressedOnce = true;
+    _showBackToast('Press back again to exit');
+    backToastTimer = setTimeout(() => { backPressedOnce = false; }, 2500);
+    ensureSentinel();
+    return;
+  }
+  if (top.type === 'modal') {
+    const el = document.getElementById(top.id);
+    if (el) el.style.display = 'none';
+    navStack.pop();
+    ensureSentinel();
+    return;
+  }
+  if (top.type === 'screen') {
+    if (top.id === 'game' || top.id === 'result') {
+      if (backPressedOnce) {
+        clearTimeout(backToastTimer);
+        backPressedOnce = false;
+        navStack.length = 0;
+        if (typeof flashTimer !== 'undefined' && flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
+        _origShowScreen('home');
+        freshSeedToInput();
+        ensureSentinel();
+        return;
+      }
+      backPressedOnce = true;
+      _showBackToast('Press back again to go to menu');
+      backToastTimer = setTimeout(() => { backPressedOnce = false; }, 2500);
+      ensureSentinel();
+      return;
+    }
+    navStack.length = 0;
+    _origShowScreen('home');
+    freshSeedToInput();
+    ensureSentinel();
+    return;
+  }
+});
+
+function _showBackToast(msg) {
+  let toast = document.getElementById('back-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'back-toast';
+    toast.style.cssText = [
+      'position:fixed','bottom:calc(env(safe-area-inset-bottom,0px) + 28px)','left:50%',
+      'transform:translateX(-50%) translateY(12px)','background:var(--bg4)',
+      'border:0.5px solid var(--line2)','color:var(--sub)','font-family:var(--mono)',
+      'font-size:10px','letter-spacing:.12em','text-transform:uppercase','padding:9px 18px',
+      'border-radius:4px','z-index:9999','opacity:0','transition:opacity .2s,transform .2s',
+      'white-space:nowrap','pointer-events:none',
+    ].join(';');
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  requestAnimationFrame(() => { toast.style.opacity = '1'; toast.style.transform = 'translateX(-50%) translateY(0)'; });
+  clearTimeout(toast._hideTimer);
+  toast._hideTimer = setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(-50%) translateY(12px)'; }, 2200);
+}
+
+window.history.replaceState({ base: true }, '');
+ensureSentinel();
+refreshDailyBtn();
+</script>
+
+<script>
+// ── UPDATE CHECK ──
+const UPDATE_VERSION_URL = 'https://snazzygaz.github.io/chromemory/version.json';
+const LS_KEY = 'chromemory_seen_version';
+
+async function checkForUpdate(manual = false) {
+  const btn = document.getElementById('update-btn');
+  if (!btn || btn.classList.contains('checking')) return;
+
+  btn.classList.add('checking');
+  btn.title = 'Checking…';
+
+  try {
+    const res = await fetch(UPDATE_VERSION_URL + '?t=' + Date.now(), {
+      cache: 'no-store',
+      mode: 'cors',
+      credentials: 'omit',
+      headers: { 'pragma': 'no-cache', 'cache-control': 'no-cache' }
+    });
+    if (!res.ok) throw new Error('not ok');
+    const data = await res.json();
+    const latest = (data.version || '').trim();
+    if (!latest) throw new Error('no version');
+
+    const seen = localStorage.getItem(LS_KEY);
+
+    // First ever load — just store the version silently, no update prompt
+    if (!seen) {
+      localStorage.setItem(LS_KEY, latest);
+      btn.classList.remove('checking');
+      btn.title = 'Check for updates';
+      return;
+    }
+
+    btn.classList.remove('checking');
+
+    if (latest !== seen) {
+      btn.classList.add('has-update');
+      btn.title = 'Update available — tap to refresh';
+      btn.onclick = () => {
+        localStorage.setItem(LS_KEY, latest);
+        window.location.reload(true);
+      };
+      _showUpdateToast(`Update available — v${latest} · tap ↑ to refresh`, true);
+    } else {
+      btn.title = 'Up to date';
+      if (manual) _showUpdateToast('Already up to date ✓', false);
+      setTimeout(() => {
+        if (!btn.classList.contains('has-update')) btn.title = 'Check for updates';
+      }, 3000);
+    }
+  } catch (e) {
+    btn.classList.remove('checking');
+    btn.title = 'Check for updates';
+    if (manual) _showUpdateToast('Could not reach update server', false);
+  }
+}
+
+function _showUpdateToast(msg, isUpdate) {
+  let toast = document.getElementById('update-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'update-toast';
+    toast.style.cssText = [
+      'position:fixed',
+      'bottom:calc(env(safe-area-inset-bottom,0px) + 28px)',
+      'left:50%',
+      'transform:translateX(-50%) translateY(12px)',
+      'background:var(--bg4)',
+      'border:0.5px solid var(--line2)',
+      'color:var(--sub)',
+      'font-family:var(--mono)',
+      'font-size:10px',
+      'letter-spacing:.12em',
+      'text-transform:uppercase',
+      'padding:9px 18px',
+      'border-radius:4px',
+      'z-index:9999',
+      'opacity:0',
+      'transition:opacity .2s,transform .2s',
+      'white-space:nowrap',
+      'pointer-events:none',
+      'display:flex',
+      'align-items:center',
+      'gap:8px',
+      'will-change:transform,opacity',
+      'contain:layout style',
+    ].join(';');
+    document.body.appendChild(toast);
+  }
+
+  toast.innerHTML = isUpdate
+    ? `<span style="width:6px;height:6px;border-radius:50%;background:#7ec8a0;flex-shrink:0;display:inline-block"></span>${msg}`
+    : msg;
+
+  requestAnimationFrame(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateX(-50%) translateY(0)';
+  });
+
+  clearTimeout(toast._hideTimer);
+  toast._hideTimer = setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(-50%) translateY(12px)';
+  }, isUpdate ? 5000 : 2200);
+}
+
+// Silent background check on load
+window.addEventListener('load', () => {
+  setTimeout(() => checkForUpdate(false), 1500);
+});
+</script>
+
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
+</body>
+</html>
