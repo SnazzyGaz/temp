@@ -1402,8 +1402,11 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
     </div>
     <div class="hist-list" id="hist-list"></div>
     <button class="ghost-btn" onclick="goHome()">New game</button>
-    <button class="ghost-btn" id="replay-btn" onclick="replaySeed()" style="display:none">Replay same seed</button>
-    <button class="primary-btn" id="copy-btn" onclick="shareSeed()">Share result</button>
+    <button class="ghost-btn" id="copy-btn" onclick="showSeedActions()">Share / Replay</button>
+    <div id="seed-actions" style="display:none;margin-top:-3px;margin-bottom:7px;display:none">
+      <button class="ghost-btn" onclick="doShareSeed()" style="margin-bottom:4px">Copy seed to clipboard</button>
+      <button class="ghost-btn" onclick="replaySeed()">Replay same seed</button>
+    </div>
   </div>
 </div>
 
@@ -2135,8 +2138,8 @@ function showEnd() {
 
   // keep hist-list empty — breakdown is now in the stage
   document.getElementById('hist-list').innerHTML = '';
-  document.getElementById('copy-btn').textContent = 'Copy seed';
-  document.getElementById('replay-btn').style.display = 'block';
+  document.getElementById('copy-btn').textContent = 'Share / Replay';
+  document.getElementById('seed-actions').style.display = 'none';
   showScreen('end');
 
   countUp(document.getElementById('end-score'), 0, avg, 1000, () => {
@@ -2158,34 +2161,42 @@ function shareText() {
   return `Chromemory — ${seedStr}\nMy score: ${fmt(avg)}\nCan you beat it?`;
 }
 
-function shareSeed() {
-  const text = shareText();
+function showSeedActions() {
+  const actions = document.getElementById('seed-actions');
   const btn = document.getElementById('copy-btn');
+  if (actions.style.display === 'none') {
+    actions.style.display = 'block';
+    btn.textContent = 'Share / Replay ▴';
+  } else {
+    actions.style.display = 'none';
+    btn.textContent = 'Share / Replay';
+  }
+}
+
+function doShareSeed() {
+  const text = shareText();
 
   // Native share sheet on mobile (iOS/Android)
   if (navigator.share) {
-    navigator.share({ text })
-      .catch(() => {}); // user cancelled — no need to do anything
+    navigator.share({ text }).catch(() => {});
     return;
   }
 
   // Desktop fallback — copy to clipboard
+  const btn = document.getElementById('seed-actions').querySelector('.ghost-btn');
   navigator.clipboard.writeText(text).then(() => {
     btn.textContent = 'Copied!';
-    setTimeout(() => { btn.textContent = 'Share result'; }, 2000);
+    setTimeout(() => { btn.textContent = 'Copy seed to clipboard'; }, 2000);
   }).catch(() => prompt('Copy and share:', text));
 }
 
 function copySeed() {
-  // Legacy — still used by seed-reveal tap on desktop
+  // Used by seed-reveal tap on desktop end screen
   const text = shareText();
   const label = document.querySelector('.seed-reveal-label');
   navigator.clipboard.writeText(text).then(() => {
-    const b = document.getElementById('copy-btn');
-    b.textContent = 'Copied!';
     if (label) label.textContent = 'Copied!';
     setTimeout(() => {
-      b.textContent = 'Share result';
       if (label) label.textContent = 'Seed — tap to copy';
     }, 2000);
   }).catch(() => prompt('Copy and share:', text));
