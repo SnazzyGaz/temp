@@ -1657,7 +1657,7 @@ function setDaily(btn) {
   document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
   const seed = getDailySeed();
-  openSeedPanel();
+  closeSeedPanel();
   document.getElementById('seed-input').value = seed;
   document.getElementById('home-seed-display').textContent = seed;
   document.getElementById('seed-input').disabled = true;
