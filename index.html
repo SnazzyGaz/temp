@@ -935,8 +935,7 @@ html, body {
   #end { flex-direction: column; overflow: hidden; }
 
   .end-stage {
-    flex: 1 1 0;
-    min-height: 0;
+    flex: 0 0 auto;
     overflow-y: auto;
     padding: calc(env(safe-area-inset-top) + 10px) 14px 6px;
     gap: 6px;
@@ -953,7 +952,7 @@ html, body {
   .end-row-axis-delta { font-size: 10px; }
 
   .end-panel {
-    flex: 0 0 auto;
+    flex: 1 0 auto;
     width: 100%;
     border-left: none;
     border-top: 0.5px solid var(--line);
@@ -1401,7 +1400,7 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
       <div class="seed-reveal-hint">Send this to a friend to challenge them on the exact same colours</div>
     </div>
     <div class="hist-list" id="hist-list"></div>
-    <button class="ghost-btn" onclick="goHome()">New game</button>
+    <button class="primary-btn" onclick="goHome()">New game</button>
     <button class="ghost-btn" id="copy-btn" onclick="showSeedActions()">Share / Replay</button>
     <div id="seed-actions" style="display:none">
       <button class="ghost-btn" onclick="doShareSeed()" style="margin-bottom:4px">Copy seed to clipboard</button>
