@@ -265,7 +265,7 @@ html, body {
 /* ── UPDATE BUTTON ── */
 #update-btn {
   position: absolute;
-  top: 16px;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
   left: 16px;
   width: 28px;
   height: 28px;
@@ -976,7 +976,7 @@ html, body {
 <div class="screen active" id="home">
   <div class="home-inner">
 
-    <button onclick="openInfoModal()" style="position:absolute;top:16px;right:16px;width:28px;height:28px;border-radius:50%;background:transparent;border:0.5px solid var(--line2);color:var(--mute);font-family:var(--mono);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;z-index:10" onmouseover="this.style.borderColor='var(--mute)';this.style.color='var(--sub)'" onmouseout="this.style.borderColor='var(--line2)';this.style.color='var(--mute)'">?</button>
+    <button onclick="openInfoModal()" style="position:absolute;top:calc(env(safe-area-inset-top, 0px) + 16px);right:16px;width:28px;height:28px;border-radius:50%;background:transparent;border:0.5px solid var(--line2);color:var(--mute);font-family:var(--mono);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;z-index:10" onmouseover="this.style.borderColor='var(--mute)';this.style.color='var(--sub)'" onmouseout="this.style.borderColor='var(--line2)';this.style.color='var(--mute)'">?</button>
 
     <button id="update-btn" title="Check for updates" onclick="checkForUpdate(true)">↑</button>
 
