@@ -1411,7 +1411,7 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
     <div class="hist-list" id="hist-list"></div>
     <button class="primary-btn" onclick="goHome()">New game</button>
     <button class="ghost-btn" onclick="replaySeed()">Replay seed</button>
-    <button class="ghost-btn" onclick="doShareSeed()">Copy seed</button>
+    <button class="ghost-btn" onclick="doShareSeed()">Share</button>
   </div>
 </div>
 
@@ -2161,26 +2161,24 @@ function showEnd() {
 
 function shareText() {
   const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-  return `Chromemory — ${seedStr}\nMy score: ${fmt(avg)}\nCan you beat it?`;
+  const url = `https://snazzygaz.github.io/chromemory/?seed=${seedStr}`;
+  return `I scored ${fmt(avg)} on Chromemory — can you beat me? Try here: ${url}`;
 }
 
 function doShareSeed() {
-  const text = shareText();
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+  const url = `https://snazzygaz.github.io/chromemory/?seed=${seedStr}`;
+  const text = `I scored ${fmt(avg)} on Chromemory — can you beat me?`;
 
-  // Native share sheet on mobile (iOS/Android)
+  // Native share sheet on mobile (iOS/Android PWA)
   if (navigator.share) {
-    navigator.share({ text }).catch(() => {});
+    navigator.share({ title: 'Chromemory', text, url }).catch(() => {});
     return;
   }
 
-  // Desktop fallback — copy to clipboard
-  navigator.clipboard.writeText(text).then(() => {
-    // Find the copy seed button and flash feedback
-    const btns = document.querySelectorAll('#end .ghost-btn');
-    const copyBtn = btns[btns.length - 1];
-    copyBtn.textContent = 'Copied!';
-    setTimeout(() => { copyBtn.textContent = 'Copy seed'; }, 2000);
-  }).catch(() => prompt('Copy and share:', text));
+  // Twitter intent fallback for desktop
+  const tweet = encodeURIComponent(`${text} Try here: ${url}`);
+  window.open(`https://twitter.com/intent/tweet?text=${tweet}`, '_blank');
 }
 
 function copySeed() {
