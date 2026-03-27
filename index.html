@@ -2692,12 +2692,14 @@ window.addEventListener('load', () => {
   setTimeout(() => checkForUpdate(false), 1500);
 });
 
-// Prefill seed input from URL param (?seed=XXXX)
+// Prefill seed input from URL param (?seed=XXXX) and open the panel
+// so playSeed() reads the input rather than generating a random seed
 window.addEventListener('load', () => {
   const seed = new URLSearchParams(window.location.search).get('seed');
   if (seed) {
     const input = document.getElementById('seed-input');
     if (input) input.value = seed.toUpperCase();
+    openSeedPanel();
   }
 });
 </script>
