@@ -737,7 +737,7 @@ html, body {
 .end-score { font-size: 50px; font-weight: 300; color: var(--bright); letter-spacing: -.02em; line-height: 1; margin-bottom: 2px; }
 .end-grade { font-size: 9px; letter-spacing: .15em; color: var(--mute); text-transform: uppercase; margin-bottom: 18px; }
 
-.hist-list { margin-bottom: 14px; }
+.hist-list { margin-bottom: 0; }
 .hist-row {
   display: flex;
   align-items: center;
@@ -937,16 +937,15 @@ html, body {
   .end-stage {
     flex: 1 1 0;
     min-height: 0;
-    max-height: calc(55dvh);
     overflow-y: auto;
-    padding: calc(env(safe-area-inset-top) + 10px) 14px 10px;
-    gap: 8px;
+    padding: calc(env(safe-area-inset-top) + 10px) 14px 6px;
+    gap: 6px;
     justify-content: flex-start;
     align-items: stretch;
   }
 
   .end-row { max-width: 100%; gap: 12px; }
-  .end-swatch { width: 52px; height: 52px; border-radius: 10px; flex-shrink: 0; }
+  .end-swatch { width: 48px; height: 48px; border-radius: 10px; flex-shrink: 0; }
   .end-row-rnd { font-size: 10px; margin-bottom: 2px; }
   .end-row-score { font-size: 19px; }
   .end-row-axis-label { font-size: 9px; }
@@ -958,15 +957,16 @@ html, body {
     width: 100%;
     border-left: none;
     border-top: 0.5px solid var(--line);
-    padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
+    padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
     align-items: flex-start;
     overflow: visible;
   }
   .end-panel > * { max-width: 100%; }
-  .end-score { font-size: 36px; margin-bottom: 2px; }
-  .end-grade { font-size: 11px; margin-bottom: 12px; }
+  .end-score { font-size: 32px; margin-bottom: 1px; }
+  .end-grade { font-size: 10px; margin-bottom: 8px; }
   .seed-reveal { display: none; }
-  .ctrl-wordmark { font-size: 11px; margin-bottom: 4px; }
+  .ctrl-wordmark { font-size: 10px; margin-bottom: 2px; }
+  .end-panel .ghost-btn { padding: 11px; margin-bottom: 5px; }
 }
 </style>
 </head>
@@ -1403,7 +1403,7 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
     <div class="hist-list" id="hist-list"></div>
     <button class="ghost-btn" onclick="goHome()">New game</button>
     <button class="ghost-btn" id="copy-btn" onclick="showSeedActions()">Share / Replay</button>
-    <div id="seed-actions" style="display:none;margin-top:-3px;margin-bottom:7px;display:none">
+    <div id="seed-actions" style="display:none">
       <button class="ghost-btn" onclick="doShareSeed()" style="margin-bottom:4px">Copy seed to clipboard</button>
       <button class="ghost-btn" onclick="replaySeed()">Replay same seed</button>
     </div>
