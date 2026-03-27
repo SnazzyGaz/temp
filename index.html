@@ -13,6 +13,17 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap');
 
+/* 23. Fallback font-face in case Google Fonts is unreachable (PWA offline) */
+@supports (font-display: swap) {
+  @font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 300 500;
+    font-display: swap;
+    src: local('JetBrains Mono'), local('JetBrainsMono');
+  }
+}
+
 :root {
   --bg:     #26262a;
   --bg2:    #2e2e33;
@@ -360,15 +371,7 @@ html, body {
   margin-top: 5px;
 }
 
-.progress-bar {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 2px;
-}
-.progress-fill {
-  height: 100%;
-  background: rgba(255,255,255,0.16);
-}
+/* progress-bar styles in modal animations section below */
 
 /* ── CTRL PANEL ── */
 .ctrl-panel {
@@ -550,6 +553,7 @@ html, body {
   font-family: var(--mono);
   text-align: right;
   line-height: 1.8;
+  z-index: 3;
 }
 .result-label-guess {
   position: absolute;
@@ -560,6 +564,7 @@ html, body {
   text-transform: uppercase;
   font-family: var(--mono);
   line-height: 1.8;
+  z-index: 3;
 }
 
 .result-panel {
@@ -742,6 +747,54 @@ html, body {
 }
 .hist-rnd { font-size: 9px; letter-spacing: .08em; color: var(--dim); text-transform: uppercase; flex: 1; }
 .hist-score { font-size: 11px; color: var(--sub); letter-spacing: .04em; }
+
+/* ── MODAL ANIMATIONS ── */
+.modal-overlay {
+  opacity: 0;
+  animation: modal-fade-in .2s ease forwards;
+}
+.modal-overlay > div {
+  transform: scale(0.95) translateY(8px);
+  animation: modal-pop-in .25s cubic-bezier(.4,0,.2,1) forwards;
+}
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes modal-pop-in {
+  from { transform: scale(0.95) translateY(8px); opacity: 0; }
+  to   { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* ── PROGRESS BAR ENHANCEMENT (8) ── */
+.progress-bar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 4px;
+}
+.progress-fill {
+  height: 100%;
+  background: rgba(255,255,255,0.28);
+  box-shadow: 0 0 8px rgba(255,255,255,0.15);
+}
+
+/* ── LOCK BUTTON PULSE (9) ── */
+@keyframes lock-pulse {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+.lock-pulsing {
+  animation: lock-pulse .2s ease;
+}
+
+/* ── DARK COLOUR INSET BORDER (10) ── */
+.stage-colour-wrap {
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+.result-stage-wrap {
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+}
 
 /* ── MOBILE ── */
 @media (max-width: 640px) {
@@ -1242,7 +1295,7 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
       <div class="ctrl-dots" id="ctrl-dots" style="margin-bottom:0"></div>
       <div style="display:flex;align-items:center;gap:10px">
         <span id="stage-round" style="font-size:9px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase">Round 01 / 05</span>
-        <button class="menu-btn" onclick="goHome()">Menu</button>
+        <button class="menu-btn" onclick="confirmGoHome(this)">Menu</button>
       </div>
     </div>
     <div class="section-label" id="ctrl-mode-label">Memorise</div>
@@ -1255,7 +1308,7 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
         <div class="slider-track" id="track-h">
           <div class="slider-fill" id="fill-h" style="width:50%"></div>
           <div class="slider-thumb" id="thumb-h" style="left:50%"></div>
-          <input class="slider-native" type="range" min="0" max="360" step="1" id="sl-h" value="180" oninput="updateSlider('h')">
+          <input class="slider-native" type="range" min="0" max="360" step="1" id="sl-h" value="180" oninput="updateSlider('h')" aria-label="Hue">
         </div>
         <span class="slider-val" id="val-h">180°</span>
       </div>
@@ -1264,7 +1317,7 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
         <div class="slider-track" id="track-s">
           <div class="slider-fill" id="fill-s" style="width:50%"></div>
           <div class="slider-thumb" id="thumb-s" style="left:50%"></div>
-          <input class="slider-native" type="range" min="0" max="100" step="0.1" id="sl-s" value="50" oninput="updateSlider('s')">
+          <input class="slider-native" type="range" min="0" max="100" step="0.1" id="sl-s" value="50" oninput="updateSlider('s')" aria-label="Saturation">
         </div>
         <span class="slider-val" id="val-s">050%</span>
       </div>
@@ -1273,7 +1326,7 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
         <div class="slider-track" id="track-l">
           <div class="slider-fill" id="fill-l" style="width:50%"></div>
           <div class="slider-thumb" id="thumb-l" style="left:50%"></div>
-          <input class="slider-native" type="range" min="0" max="100" step="0.1" id="sl-l" value="50" oninput="updateSlider('l')">
+          <input class="slider-native" type="range" min="0" max="100" step="0.1" id="sl-l" value="50" oninput="updateSlider('l')" aria-label="Brightness">
         </div>
         <span class="slider-val" id="val-l">050%</span>
       </div>
@@ -1305,9 +1358,9 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
   <div class="result-panel">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
       <div class="ctrl-wordmark" style="margin-bottom:0">Round <span id="res-rn">01</span> / 05</div>
-      <button class="menu-btn" onclick="goHome()">Menu</button>
+      <button class="menu-btn" onclick="confirmGoHome(this)">Menu</button>
     </div>
-    <div class="result-score-big" id="res-score">—</div>
+    <div class="result-score-big" id="res-score" aria-live="polite">—</div>
     <div class="result-grade" id="res-grade">—</div>
     <div class="axes-grid">
       <div class="axis-cell">
@@ -1340,7 +1393,7 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
 
   <div class="end-panel">
     <div class="ctrl-wordmark">Game complete</div>
-    <div class="end-score" id="end-score">—</div>
+    <div class="end-score" id="end-score" aria-live="polite">—</div>
     <div class="end-grade" id="end-grade">—</div>
     <div class="seed-reveal" onclick="copySeed()" style="cursor:pointer" title="Tap to copy">
       <div class="seed-reveal-label">Seed — tap to copy</div>
@@ -1485,8 +1538,38 @@ function freshSeedToInput() {
 }
 
 function goHome() {
+  previousSeedScore = null;
   freshSeedToInput();
   showScreen('home');
+}
+
+// 28. Menu button confirmation during active game
+function confirmGoHome(btn) {
+  if (round >= 5 && !isGuessing) {
+    // Game complete or on last result — safe to leave
+    goHome();
+    return;
+  }
+  if (btn.dataset.confirming === 'true') {
+    btn.dataset.confirming = 'false';
+    btn.textContent = 'Menu';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+    goHome();
+    return;
+  }
+  btn.dataset.confirming = 'true';
+  btn.textContent = 'Abandon?';
+  btn.style.borderColor = '#e85454';
+  btn.style.color = '#e85454';
+  setTimeout(() => {
+    if (btn.dataset.confirming === 'true') {
+      btn.dataset.confirming = 'false';
+      btn.textContent = 'Menu';
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }
+  }, 2500);
 }
 
 let isDailyMode = false;
@@ -1644,7 +1727,27 @@ function playSeed() {
   if (!panelOpen) {
     inp = makeSeedStr();
   }
-  if (!parseSeed(inp)) { alert('Invalid seed — try ANVIL-7823'); return; }
+  if (!parseSeed(inp)) {
+    // 26. Inline validation instead of alert
+    const seedInput = document.getElementById('seed-input');
+    seedInput.style.borderColor = '#e85454';
+    seedInput.style.color = '#e85454';
+    let errEl = document.getElementById('seed-error');
+    if (!errEl) {
+      errEl = document.createElement('div');
+      errEl.id = 'seed-error';
+      errEl.style.cssText = 'font-size:9px;letter-spacing:.06em;color:#e85454;margin-top:2px;margin-bottom:4px;transition:opacity .2s';
+      seedInput.closest('.seed-field-row').insertAdjacentElement('afterend', errEl);
+    }
+    errEl.textContent = 'Invalid seed — try ANVIL-7823';
+    errEl.style.opacity = '1';
+    setTimeout(() => {
+      seedInput.style.borderColor = '';
+      seedInput.style.color = '';
+      if (errEl) errEl.style.opacity = '0';
+    }, 2500);
+    return;
+  }
   document.getElementById('home-seed-display').textContent = seedStr;
   rng = mulberry32(seedNum);
   buildColours();
@@ -1824,20 +1927,22 @@ function updateSliderGradients() {
   if (!isGuessing) return;
   const h = +document.getElementById('sl-h').value;
   const s = +document.getElementById('sl-s').value;
-  const l = +document.getElementById('sl-l').value;
+  const b = +document.getElementById('sl-l').value;
 
-  // Hue: full spectrum
+  // Hue: always pure spectrum — stays readable regardless of S/B
   const hueStops = [];
   for (let i = 0; i <= 360; i += 30) hueStops.push(`hsl(${i},100%,50%)`);
   document.getElementById('track-h').style.background = `linear-gradient(to right, ${hueStops.join(',')})`;
 
-  // Saturation: grey → vivid at current hue and brightness
-  document.getElementById('track-s').style.background =
-    `linear-gradient(to right, hsl(${h},0%,${l}%), hsl(${h},100%,${l}%))`;
+  // Saturation: grey → vivid at current hue and brightness (via HSB→HSL)
+  const satStops = [];
+  for (let sv = 0; sv <= 100; sv += 20) satStops.push(hsl(h, sv, b));
+  document.getElementById('track-s').style.background = `linear-gradient(to right, ${satStops.join(',')})`;
 
-  // Brightness: black → white (with hue/sat tint in middle)
-  document.getElementById('track-l').style.background =
-    `linear-gradient(to right, hsl(${h},${s}%,0%), hsl(${h},${s}%,50%), hsl(${h},${s}%,100%))`;
+  // Brightness: black → full brightness at current hue/sat (via HSB→HSL)
+  const briStops = [];
+  for (let bv = 0; bv <= 100; bv += 20) briStops.push(hsl(h, s, bv));
+  document.getElementById('track-l').style.background = `linear-gradient(to right, ${briStops.join(',')})`;
 }
 
 function refreshPreview() {
@@ -1866,6 +1971,14 @@ function countUp(el, from, to, duration, onDone) {
 }
 
 function lockGuess() {
+  // 9. Pulse animation on lock button
+  const lockBtn = document.getElementById('lock-btn');
+  lockBtn.classList.add('lock-pulsing');
+  lockBtn.addEventListener('animationend', () => lockBtn.classList.remove('lock-pulsing'), { once: true });
+
+  // 22. Haptic feedback on lock
+  if (navigator.vibrate) navigator.vibrate(12);
+
   // Reset stage block back to neutral before switching to result screen
   if (window.innerWidth <= 640) {
     document.getElementById('stage-colour').style.background = 'var(--bg2)';
@@ -1908,8 +2021,13 @@ function lockGuess() {
 
   document.getElementById('res-rn').textContent = pad2(round);
   document.getElementById('res-seed-val').textContent = seedStr;
-  document.getElementById('res-target-bg').style.background = hsl(tc.h, tc.s, tc.b);
-  document.getElementById('res-guess-bg').style.background = hsl(gh, gs, gb);
+
+  // Result swatch: instant diagonal split
+  const resTgt = document.getElementById('res-target-bg');
+  const resGss = document.getElementById('res-guess-bg');
+  resTgt.style.background = hsl(tc.h, tc.s, tc.b);
+  resGss.style.background = hsl(gh, gs, gb);
+
   document.getElementById('res-target-vals').innerHTML =
     `<span style="opacity:.45">H</span> ${pad3(tc.h)}°<br>` +
     `<span style="opacity:.45">S</span> ${tc.s.toFixed(1)}%<br>` +
@@ -1927,6 +2045,7 @@ function lockGuess() {
   const gLabel = document.getElementById('res-guess-vals').parentElement;
   tLabel.querySelector('span').style.color = tc_cols.label;
   gLabel.querySelector('span').style.color = gc_cols.label;
+
   document.getElementById('res-score').textContent = '—';
   document.getElementById('res-grade').textContent = '';
   document.getElementById('ax-h').textContent = '—';
@@ -2021,7 +2140,14 @@ function showEnd() {
   showScreen('end');
 
   countUp(document.getElementById('end-score'), 0, avg, 1000, () => {
-    document.getElementById('end-grade').textContent = grade(avg) + ' — avg per round';
+    let gradeText = grade(avg) + ' — avg per round';
+    // 20. Show improvement delta when replaying
+    if (previousSeedScore !== null) {
+      const delta = avg - previousSeedScore;
+      const sign = delta >= 0 ? '+' : '';
+      gradeText += ` · ${sign}${delta.toFixed(2)} vs last`;
+    }
+    document.getElementById('end-grade').textContent = gradeText;
   });
 
   saveToHistory(avg);
@@ -2065,7 +2191,12 @@ function copySeed() {
   }).catch(() => prompt('Copy and share:', text));
 }
 
+let previousSeedScore = null;
+
 function replaySeed() {
+  // 20. Store previous score for comparison
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+  previousSeedScore = avg;
   rng = mulberry32(seedNum);
   buildColours();
   startGame();
@@ -2180,8 +2311,8 @@ freshSeedToInput();
 
   const axes = [
     { axis: 'h', min: 0, max: 360, step: 1 },
-    { axis: 's', min: 0, max: 100, step: 0.1 },
-    { axis: 'l', min: 0, max: 100, step: 0.1 },
+    { axis: 's', min: 0, max: 100, step: 0.5 },
+    { axis: 'l', min: 0, max: 100, step: 0.5 },
   ];
 
   axes.forEach(({ axis, min, max, step }) => {
@@ -2218,29 +2349,29 @@ freshSeedToInput();
 })();
 </script>
 <!-- HISTORY MODAL -->
-<div id="history-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;padding:20px">
+<div id="history-modal" class="modal-overlay" role="dialog" aria-label="Game history" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;padding:20px">
   <div style="background:var(--bg2);border:0.5px solid var(--line2);border-radius:12px;max-width:480px;width:100%;max-height:80vh;display:flex;flex-direction:column;position:relative">
     <div style="padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
       <div style="font-size:11px;letter-spacing:.22em;color:var(--dim);text-transform:uppercase">History</div>
-      <button id="history-modal-close" style="background:transparent;border:none;color:var(--dim);font-size:18px;cursor:pointer;line-height:1;font-family:var(--mono)">×</button>
+      <button id="history-modal-close" aria-label="Close history" style="background:transparent;border:none;color:var(--dim);font-size:18px;cursor:pointer;line-height:1;font-family:var(--mono)">×</button>
     </div>
     <div id="history-list" style="overflow-y:auto;padding:12px 20px 20px;flex:1"></div>
   </div>
 </div>
 
 <!-- HISTORY DETAIL MODAL -->
-<div id="history-detail-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:110;align-items:center;justify-content:center;padding:20px">
+<div id="history-detail-modal" class="modal-overlay" role="dialog" aria-label="Game detail" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:110;align-items:center;justify-content:center;padding:20px">
   <div style="background:var(--bg2);border:0.5px solid var(--line2);border-radius:12px;max-width:480px;width:100%;max-height:80vh;display:flex;flex-direction:column;position:relative">
     <div style="padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
       <div id="detail-title" style="font-size:11px;letter-spacing:.22em;color:var(--dim);text-transform:uppercase">—</div>
-      <button id="history-detail-modal-close" style="background:transparent;border:none;color:var(--dim);font-size:18px;cursor:pointer;line-height:1;font-family:var(--mono)">×</button>
+      <button id="history-detail-modal-close" aria-label="Close detail" style="background:transparent;border:none;color:var(--dim);font-size:18px;cursor:pointer;line-height:1;font-family:var(--mono)">×</button>
     </div>
     <div id="detail-body" style="overflow-y:auto;padding:12px 20px 20px;flex:1"></div>
   </div>
 </div>
 
 <!-- INFO MODAL -->
-<div id="info-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeInfoModal()">
+<div id="info-modal" class="modal-overlay" role="dialog" aria-label="How to play" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeInfoModal()">
   <div style="background:var(--bg2);border:0.5px solid var(--line2);border-radius:12px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;padding:28px 24px;position:relative">
     <button onclick="closeInfoModal()" style="position:absolute;top:14px;right:14px;background:transparent;border:none;color:var(--dim);font-size:18px;cursor:pointer;line-height:1;font-family:var(--mono)">×</button>
 
