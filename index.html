@@ -1401,11 +1401,8 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
     </div>
     <div class="hist-list" id="hist-list"></div>
     <button class="primary-btn" onclick="goHome()">New game</button>
-    <button class="ghost-btn" id="copy-btn" onclick="showSeedActions()">Share / Replay</button>
-    <div id="seed-actions" style="display:none">
-      <button class="ghost-btn" onclick="doShareSeed()" style="margin-bottom:4px">Copy seed to clipboard</button>
-      <button class="ghost-btn" onclick="replaySeed()">Replay same seed</button>
-    </div>
+    <button class="ghost-btn" onclick="replaySeed()">Replay seed</button>
+    <button class="ghost-btn" onclick="doShareSeed()">Copy seed</button>
   </div>
 </div>
 
@@ -2137,8 +2134,6 @@ function showEnd() {
 
   // keep hist-list empty — breakdown is now in the stage
   document.getElementById('hist-list').innerHTML = '';
-  document.getElementById('copy-btn').textContent = 'Share / Replay';
-  document.getElementById('seed-actions').style.display = 'none';
   showScreen('end');
 
   countUp(document.getElementById('end-score'), 0, avg, 1000, () => {
@@ -2160,18 +2155,6 @@ function shareText() {
   return `Chromemory — ${seedStr}\nMy score: ${fmt(avg)}\nCan you beat it?`;
 }
 
-function showSeedActions() {
-  const actions = document.getElementById('seed-actions');
-  const btn = document.getElementById('copy-btn');
-  if (actions.style.display === 'none') {
-    actions.style.display = 'block';
-    btn.textContent = 'Share / Replay ▴';
-  } else {
-    actions.style.display = 'none';
-    btn.textContent = 'Share / Replay';
-  }
-}
-
 function doShareSeed() {
   const text = shareText();
 
@@ -2182,10 +2165,12 @@ function doShareSeed() {
   }
 
   // Desktop fallback — copy to clipboard
-  const btn = document.getElementById('seed-actions').querySelector('.ghost-btn');
   navigator.clipboard.writeText(text).then(() => {
-    btn.textContent = 'Copied!';
-    setTimeout(() => { btn.textContent = 'Copy seed to clipboard'; }, 2000);
+    // Find the copy seed button and flash feedback
+    const btns = document.querySelectorAll('#end .ghost-btn');
+    const copyBtn = btns[btns.length - 1];
+    copyBtn.textContent = 'Copied!';
+    setTimeout(() => { copyBtn.textContent = 'Copy seed'; }, 2000);
   }).catch(() => prompt('Copy and share:', text));
 }
 
