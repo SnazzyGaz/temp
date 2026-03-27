@@ -9,6 +9,13 @@
 <meta name="apple-mobile-web-app-title" content="Chromemory">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
+<meta property="og:title" content="Chromemory">
+<meta property="og:description" content="A colour memory game. How well do you remember a colour?">
+<meta property="og:image" content="https://snazzygaz.github.io/chromemory/og-image.png">
+<meta property="og:url" content="https://snazzygaz.github.io/chromemory/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://snazzygaz.github.io/chromemory/og-image.png">
 <title>Chromemory</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap');
@@ -935,7 +942,9 @@ html, body {
   #end { flex-direction: column; overflow: hidden; }
 
   .end-stage {
-    flex: 0 0 auto;
+    flex: 1 1 0;
+    min-height: 0;
+    max-height: 60dvh;
     overflow-y: auto;
     padding: calc(env(safe-area-inset-top) + 10px) 14px 6px;
     gap: 6px;
@@ -952,13 +961,13 @@ html, body {
   .end-row-axis-delta { font-size: 10px; }
 
   .end-panel {
-    flex: 1 0 auto;
+    flex: 0 0 auto;
     width: 100%;
     border-left: none;
     border-top: 0.5px solid var(--line);
     padding: 10px 16px calc(12px + env(safe-area-inset-bottom));
     align-items: flex-start;
-    overflow: visible;
+    overflow-y: auto;
   }
   .end-panel > * { max-width: 100%; }
   .end-score { font-size: 32px; margin-bottom: 1px; }
@@ -2681,6 +2690,15 @@ function _showUpdateToast(msg, isUpdate) {
 // Silent background check on load
 window.addEventListener('load', () => {
   setTimeout(() => checkForUpdate(false), 1500);
+});
+
+// Prefill seed input from URL param (?seed=XXXX)
+window.addEventListener('load', () => {
+  const seed = new URLSearchParams(window.location.search).get('seed');
+  if (seed) {
+    const input = document.getElementById('seed-input');
+    if (input) input.value = seed.toUpperCase();
+  }
 });
 </script>
 
