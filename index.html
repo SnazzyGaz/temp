@@ -1360,12 +1360,12 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
         <div class="axis-cell-delta" id="ax-hd">—</div>
       </div>
       <div class="axis-cell">
-        <div class="axis-cell-label">Sat</div>
+        <div class="axis-cell-label">Chroma</div>
         <div class="axis-cell-score" id="ax-s">—</div>
         <div class="axis-cell-delta" id="ax-sd">—</div>
       </div>
       <div class="axis-cell">
-        <div class="axis-cell-label">Bri</div>
+        <div class="axis-cell-label">Light</div>
         <div class="axis-cell-score" id="ax-l">—</div>
         <div class="axis-cell-delta" id="ax-ld">—</div>
       </div>
@@ -1439,6 +1439,98 @@ function hsbToHsl(h, s, b) {
 function hsl(h, s, b) {
   const c = hsbToHsl(h, s, b);
   return `hsl(${c.h},${c.s.toFixed(2)}%,${c.l.toFixed(2)}%)`;
+}
+
+// ── CIEDE2000 colour-difference functions ──
+function hsbToLab(h, s, b) {
+  // HSB → linear RGB
+  s /= 100; b /= 100;
+  const k = n => (n + h / 60) % 6;
+  const f = n => b * (1 - s * Math.max(0, Math.min(k(n), 4 - k(n), 1)));
+  const r = f(5), g = f(3), bl = f(1);
+  // Linear RGB → XYZ (D65)
+  const lin = v => v > 0.04045 ? Math.pow((v + 0.055) / 1.055, 2.4) : v / 12.92;
+  const rl = lin(r), gl = lin(g), bll = lin(bl);
+  const x = rl*0.4124564 + gl*0.3575761 + bll*0.1804375;
+  const y = rl*0.2126729 + gl*0.7151522 + bll*0.0721750;
+  const z = rl*0.0193339 + gl*0.1191920 + bll*0.9503041;
+  // XYZ → L*a*b*
+  const flab = t => t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116;
+  return [116 * flab(y / 1.0) - 16, 500 * (flab(x / 0.9505) - flab(y / 1.0)), 200 * (flab(y / 1.0) - flab(z / 1.089))];
+}
+
+function ciede2000(lab1, lab2) {
+  const [L1,a1,b1] = lab1, [L2,a2,b2] = lab2;
+  const avg = (a,b) => (a+b)/2, rad = d => d*Math.PI/180, deg = r => r*180/Math.PI;
+  const { pow, sqrt, cos, sin, atan2, abs, exp } = Math;
+  const C1 = sqrt(a1*a1+b1*b1), C2 = sqrt(a2*a2+b2*b2);
+  const Cb = avg(C1,C2), Cb7 = pow(Cb,7);
+  const G = 0.5*(1 - sqrt(Cb7/(Cb7+pow(25,7))));
+  const a1p = a1*(1+G), a2p = a2*(1+G);
+  const C1p = sqrt(a1p*a1p+b1*b1), C2p = sqrt(a2p*a2p+b2*b2);
+  let h1p = deg(atan2(b1,a1p)); if(h1p<0) h1p+=360;
+  let h2p = deg(atan2(b2,a2p)); if(h2p<0) h2p+=360;
+  const dLp = L2-L1, dCp = C2p-C1p;
+  let dhp = 0;
+  if(C1p*C2p!==0) {
+    if(abs(h2p-h1p)<=180) dhp=h2p-h1p;
+    else if(h2p-h1p>180) dhp=h2p-h1p-360;
+    else dhp=h2p-h1p+360;
+  }
+  const dHp = 2*sqrt(C1p*C2p)*sin(rad(dhp/2));
+  const Lbp = avg(L1,L2), Cbp = avg(C1p,C2p);
+  let hbp = h1p+h2p;
+  if(C1p*C2p!==0) {
+    if(abs(h1p-h2p)<=180) hbp=avg(h1p,h2p);
+    else if(h1p+h2p<360) hbp=avg(h1p,h2p)+180;
+    else hbp=avg(h1p,h2p)-180;
+  }
+  const T = 1 - 0.17*cos(rad(hbp-30)) + 0.24*cos(rad(2*hbp)) + 0.32*cos(rad(3*hbp+6)) - 0.20*cos(rad(4*hbp-63));
+  const Cbp7 = pow(Cbp,7);
+  const RC = 2*sqrt(Cbp7/(Cbp7+pow(25,7)));
+  const SL = 1 + 0.015*pow(Lbp-50,2)/sqrt(20+pow(Lbp-50,2));
+  const SC = 1 + 0.045*Cbp;
+  const SH = 1 + 0.015*Cbp*T;
+  const dTheta = 30*exp(-pow((hbp-275)/25,2));
+  const RT = -sin(rad(2*dTheta))*RC;
+  return sqrt(pow(dLp/SL,2) + pow(dCp/SC,2) + pow(dHp/SH,2) + RT*(dCp/SC)*(dHp/SH));
+}
+
+// Returns the three ΔE₀₀ partial terms (lightness, chroma, hue) as separate values.
+// These are used to populate the H/S/B axis cells on the result screen.
+function ciede2000Parts(lab1, lab2) {
+  const [L1,a1,b1] = lab1, [L2,a2,b2] = lab2;
+  const avg = (a,b) => (a+b)/2, rad = d => d*Math.PI/180, deg = r => r*180/Math.PI;
+  const { pow, sqrt, cos, sin, atan2, abs, exp } = Math;
+  const C1 = sqrt(a1*a1+b1*b1), C2 = sqrt(a2*a2+b2*b2);
+  const Cb = avg(C1,C2), Cb7 = pow(Cb,7);
+  const G = 0.5*(1 - sqrt(Cb7/(Cb7+pow(25,7))));
+  const a1p = a1*(1+G), a2p = a2*(1+G);
+  const C1p = sqrt(a1p*a1p+b1*b1), C2p = sqrt(a2p*a2p+b2*b2);
+  let h1p = deg(atan2(b1,a1p)); if(h1p<0) h1p+=360;
+  let h2p = deg(atan2(b2,a2p)); if(h2p<0) h2p+=360;
+  const dLp = L2-L1, dCp = C2p-C1p;
+  let dhp = 0;
+  if(C1p*C2p!==0) {
+    if(abs(h2p-h1p)<=180) dhp=h2p-h1p;
+    else if(h2p-h1p>180) dhp=h2p-h1p-360;
+    else dhp=h2p-h1p+360;
+  }
+  const dHp = 2*sqrt(C1p*C2p)*sin(rad(dhp/2));
+  const Lbp = avg(L1,L2), Cbp = avg(C1p,C2p);
+  let hbp = h1p+h2p;
+  if(C1p*C2p!==0) {
+    if(abs(h1p-h2p)<=180) hbp=avg(h1p,h2p);
+    else if(h1p+h2p<360) hbp=avg(h1p,h2p)+180;
+    else hbp=avg(h1p,h2p)-180;
+  }
+  const T = 1 - 0.17*cos(rad(hbp-30)) + 0.24*cos(rad(2*hbp)) + 0.32*cos(rad(3*hbp+6)) - 0.20*cos(rad(4*hbp-63));
+  const Cbp7 = pow(Cbp,7);
+  const RC = 2*sqrt(Cbp7/(Cbp7+pow(25,7)));
+  const SL = 1 + 0.015*pow(Lbp-50,2)/sqrt(20+pow(Lbp-50,2));
+  const SC = 1 + 0.045*Cbp;
+  const SH = 1 + 0.015*Cbp*T;
+  return { sL: abs(dLp/SL), sC: abs(dCp/SC), sH: abs(dHp/SH) };
 }
 
 function fmt(n) { return n.toFixed(2); }
@@ -1975,40 +2067,24 @@ function lockGuess() {
   const ds = Math.abs(tc.s - gs);
   const db = Math.abs(tc.b - gb);
 
-  // Raw axis scores — fixed ranges, no range widening.
-  // Forgiveness is handled entirely through dynamic weight transfer below.
-  const sh = axScore(dh, 90);
-  const ss = axScore(ds, 50);
-  const sb = axScore(db, 50);
+  // ── CIEDE2000 scoring ──
+  // Convert both colours to CIE L*a*b* then compute ΔE₀₀.
+  // A single perceptually-uniform distance replaces the old HSB weight juggling.
+  const labT = hsbToLab(tc.h, tc.s, tc.b);
+  const labG = hsbToLab(gh, gs, gb);
+  const de   = ciede2000(labT, labG);
 
-  // Dynamic weight transfer — two independent systems:
-  //
-  // 1. SAT TRANSFER: as S drops from 40 to 0, hue weight bleeds fully into sat.
-  //    At S=40: wH=0.50, wS=0.30, wB=0.20 (base)
-  //    At S=0:  wH=0.00, wS=0.80, wB=0.20 (hue fully transferred to sat)
-  const satFactor = Math.max(0, Math.min(1, (40 - tc.s) / 40)); // 0 at S>=40, 1 at S=0
-  const satTransfer = 0.50 * Math.pow(satFactor, 1.5);           // 0 to 0.50 from H to S
+  // Map ΔE₀₀ → 0–100. MAX_DE is the "completely wrong" ceiling (~55 covers the
+  // worst realistic miss in the game's colour space).
+  const MAX_DE = 55;
+  const tot = Math.max(0, 100 - (de / MAX_DE) * 100);
 
-  // 2. BRI TRANSFER: as B drops below 15 or rises above 85, hue+sat weight
-  //    bleeds fully into brightness. Both H and S drain equally.
-  //    At B=15 or B=85: no transfer yet
-  //    At B=0 or B=100: wH=0.00, wS=0.00, wB=1.00
-  const briLow    = Math.max(0, (15 - tc.b) / 15);              // 0 at B>=15, 1 at B=0
-  const briHigh   = Math.max(0, (tc.b - 85) / 15);              // 0 at B<=85, 1 at B=100
-  const briFactor = Math.max(briLow, briHigh);
-  const briTransfer = Math.pow(briFactor, 1.5);                  // 0 to 1, drives H+S to B
-
-  // Compose final weights.
-  // Sat transfer runs on the post-satTransfer H value.
-  // Bri transfer then drains whatever H and S remain, proportionally.
-  const wH_afterSat = 0.50 - satTransfer;
-  const wS_afterSat = 0.30 + satTransfer;
-  // briTransfer collapses remaining H and S into B
-  const wH = wH_afterSat * (1 - briTransfer);
-  const wS = wS_afterSat * (1 - briTransfer);
-  const wB = 0.20 + (wH_afterSat + wS_afterSat) * briTransfer;
-
-  const tot = sh * wH + ss * wS + sb * wB;
+  // Break ΔE₀₀ into its three perceptual components for the result panel display.
+  // These are the partial terms before the square-root, normalised to 0–100.
+  const { sL, sC, sH } = ciede2000Parts(labT, labG);
+  const sh = Math.max(0, 100 - (sH / MAX_DE) * 100);
+  const ss = Math.max(0, 100 - (sC / MAX_DE) * 100);
+  const sb = Math.max(0, 100 - (sL / MAX_DE) * 100);
 
   scores.push(tot);
   history.push({ t: { ...tc }, g: { h: gh, s: gs, b: gb }, sh, ss, sb, tot, dh, ds, db });
@@ -2402,21 +2478,21 @@ freshSeedToInput();
     <div style="font-size:11px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;margin-bottom:12px">Scoring</div>
 
     <div style="font-size:11px;color:var(--mute);line-height:1.7;margin-bottom:12px">
-      Each axis is scored 0–100 based on how close your guess was. They're then combined: Hue counts for 50%, Saturation 30%, Brightness 20%.
+      Scoring uses CIEDE2000 — the industry-standard formula for perceptual colour difference. It measures how different two colours actually look to human eyes, not just how far apart their numbers are. A single ΔE value is mapped to a 0–100 score.
     </div>
 
     <div style="background:var(--bg3);border-radius:6px;padding:12px 14px;margin-bottom:20px;display:flex;flex-direction:column;gap:6px">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Hue</div>
-        <div style="font-size:11px;color:var(--sub)">50% of total</div>
+        <div style="font-size:11px;color:var(--sub)">perceptual component</div>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Saturation</div>
-        <div style="font-size:11px;color:var(--sub)">30% of total</div>
+        <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Chroma</div>
+        <div style="font-size:11px;color:var(--sub)">perceptual component</div>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Brightness</div>
-        <div style="font-size:11px;color:var(--sub)">20% of total</div>
+        <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Lightness</div>
+        <div style="font-size:11px;color:var(--sub)">perceptual component</div>
       </div>
     </div>
 
