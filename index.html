@@ -961,6 +961,16 @@ html, body {
   .seed-reveal { display: none; }
   .ctrl-wordmark { font-size: 10px; margin-bottom: 2px; }
   .end-panel .ghost-btn { padding: 11px; margin-bottom: 5px; }
+
+  /* iOS fix: Share button bottom border was being clipped */
+  .end-panel .ghost-btn:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Give the very bottom button breathing room on iPhone home indicator */
+  .end-panel {
+    padding-bottom: calc(28px + env(safe-area-inset-bottom)) !important;
+  }
 }
 </style>
 </head>
@@ -1392,7 +1402,7 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
       <div class="seed-reveal-hint">Send this to a friend to challenge them on the exact same colours</div>
     </div>
     <div class="hist-list" id="hist-list"></div>
-    <button class="primary-btn" onclick="goHome()">New game</button>
+    <button class="primary-btn" onclick="goHome()">Main Menu</button>
     <button class="ghost-btn" onclick="replaySeed()">Replay seed</button>
     <button class="ghost-btn" onclick="doShareSeed()">Share</button>
   </div>
