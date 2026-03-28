@@ -1222,9 +1222,9 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
     <div style="position:relative">
       <div id="daily-countdown" style="display:none;position:absolute;top:-18px;right:0;font-size:9px;letter-spacing:.08em;color:var(--dim);font-family:var(--mono)"></div>
       <div class="diff-row">
-        <button class="diff-btn" onclick="setDiff('easy',this)">Easy<span class="diff-time">4.0 seconds</span></button>
-        <button class="diff-btn on" id="medium-btn" onclick="setDiff('medium',this)">Medium<span class="diff-time">2.5 seconds</span></button>
-        <button class="diff-btn" onclick="setDiff('hard',this)">Hard<span class="diff-time">1.5 seconds</span></button>
+        <button class="diff-btn" onclick="setDiff('easy',this)">Easy<span class="diff-time">More time · Lenient</span></button>
+        <button class="diff-btn on" id="medium-btn" onclick="setDiff('medium',this)">Medium<span class="diff-time">Balanced</span></button>
+        <button class="diff-btn" onclick="setDiff('hard',this)">Hard<span class="diff-time">Less time · Precise</span></button>
         <button class="diff-btn" id="daily-btn" onclick="setDaily(this)">Daily<br>Challenge</button>
       </div>
     </div>
@@ -1410,7 +1410,13 @@ const WORDS = [
   'KAOLIN','LINTEL','PUMICE','SHALE','TALLOW','WARREN','ZIRCON'
 ];
 
-const DIFF_TIME = { easy: 4000, medium: 2500, hard: 1500 };
+// ── DIFFICULTY CONFIG ──
+const DIFF_CONFIG = {
+  easy:   { time: 4000, maxDE: 55 },
+  medium: { time: 2500, maxDE: 44 },
+  hard:   { time: 1500, maxDE: 35 },
+  daily:  { time: 1500, maxDE: 35 }
+};
 
 let diff = 'medium';
 let seedNum = 0, seedStr = '', rng = null;
@@ -1736,7 +1742,7 @@ function refreshDailyBtn() {
 function setDaily(btn) {
   if (dailyAlreadyPlayed()) return;
   isDailyMode = true;
-  diff = 'hard';
+  diff = 'daily';
   document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
   const seed = getDailySeed();
@@ -1930,7 +1936,8 @@ function flashColour(c) {
   hint.textContent = 'Memorise this colour';
 
   const pf = document.getElementById('progress-fill');
-  const total = DIFF_TIME[diff];
+  const diffCfg = isDailyMode ? DIFF_CONFIG.daily : DIFF_CONFIG[diff];
+  const total = diffCfg.time;
   const start = Date.now();
 
   requestAnimationFrame(() => {
@@ -2077,7 +2084,8 @@ function lockGuess() {
   const labG = hsbToLab(gh, gs, gb);
   const de   = ciede2000(labT, labG);
 
-  const MAX_DE = 44;
+  const lockCfg = isDailyMode ? DIFF_CONFIG.daily : DIFF_CONFIG[diff];
+  const MAX_DE = lockCfg.maxDE;
   const tot = Math.max(0, 100 - (de / MAX_DE) * 100);
 
   const { sL, sC, sH } = ciede2000Parts(labT, labG);
@@ -2133,8 +2141,9 @@ nextBtn.onclick = nextRound;   // safety re-attach
 
   showScreen('result');
 
-  // Count-up + final population
+  const lockedRound = round;
   countUp(document.getElementById('res-score'), 0, tot, 800, () => {
+    if (round !== lockedRound) return;
     document.getElementById('res-grade').textContent = grade(tot);
 
     // Perceptual deltas
@@ -2495,21 +2504,48 @@ freshSeedToInput();
     <div style="font-size:11px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;margin-bottom:12px">Scoring</div>
 
     <div style="font-size:11px;color:var(--mute);line-height:1.7;margin-bottom:12px">
-      Scoring uses CIEDE2000 — the industry-standard formula for perceptual colour difference. It measures how different two colours actually look to human eyes, not just how far apart their numbers are. A single ΔE value is mapped to a 0–100 score.
+      Scoring uses CIEDE2000 — the standard formula for perceptual colour difference. It measures how different two colours actually look to human eyes, not just how far apart their slider numbers are. Your score per round is 0–100, where 100 is a perfect match.
     </div>
 
-    <div style="background:var(--bg3);border-radius:6px;padding:12px 14px;margin-bottom:20px;display:flex;flex-direction:column;gap:6px">
+    <div style="background:var(--bg3);border-radius:6px;padding:12px 14px;margin-bottom:14px;display:flex;flex-direction:column;gap:8px">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Hue</div>
-        <div style="font-size:11px;color:var(--sub)">perceptual component</div>
+        <div style="font-size:11px;color:var(--sub);text-align:right">how far off the base colour angle was</div>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Chroma</div>
-        <div style="font-size:11px;color:var(--sub)">perceptual component</div>
+        <div style="font-size:11px;color:var(--sub);text-align:right">how far off the vividness was</div>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Lightness</div>
-        <div style="font-size:11px;color:var(--sub)">perceptual component</div>
+        <div style="font-size:11px;color:var(--sub);text-align:right">how far off the perceived brightness was</div>
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:var(--mute);line-height:1.7;margin-bottom:20px">
+      Each axis score shows how well you matched that perceptual dimension independently. The final round score is a combined ΔE₀₀ — a single number representing the total visible difference.
+    </div>
+
+    <div style="height:0.5px;background:var(--line);margin-bottom:20px"></div>
+
+    <div style="font-size:11px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;margin-bottom:12px">Difficulty</div>
+
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Easy</div>
+        <div style="font-size:11px;color:var(--sub);text-align:right">4 seconds to memorise · lenient scoring</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Medium</div>
+        <div style="font-size:11px;color:var(--sub);text-align:right">2.5 seconds · balanced scoring</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Hard</div>
+        <div style="font-size:11px;color:var(--sub);text-align:right">1.5 seconds · precision required</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Daily</div>
+        <div style="font-size:11px;color:var(--sub);text-align:right">hard rules · same colours for everyone · once per day</div>
       </div>
     </div>
 
@@ -2611,7 +2647,7 @@ window.addEventListener('popstate', function() {
         clearTimeout(backToastTimer);
         backPressedOnce = false;
         navStack.length = 0;
-        if (typeof flashTimer !== 'undefined' && flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
+        if (typeof flashTimer !== 'undefined' && flashTimer) { clearTimeout(flashTimer); clearInterval(flashTimer); flashTimer = null; }
         _origShowScreen('home');
         freshSeedToInput();
         ensureSentinel();
