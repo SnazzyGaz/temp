@@ -2939,9 +2939,12 @@ window.addEventListener('load', () => {
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
-}
+<script>
+  // Service Worker registration (PWA)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+      .catch(err => console.log('Service worker registration failed:', err));
+  }
 </script>
 </body>
 </html>
