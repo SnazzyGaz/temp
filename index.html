@@ -1222,9 +1222,9 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
     <div style="position:relative">
       <div id="daily-countdown" style="display:none;position:absolute;top:-18px;right:0;font-size:9px;letter-spacing:.08em;color:var(--dim);font-family:var(--mono)"></div>
       <div class="diff-row">
-        <button class="diff-btn" onclick="setDiff('easy',this)">Easy<span class="diff-time">Lenient</span></button>
-        <button class="diff-btn on" id="medium-btn" onclick="setDiff('medium',this)">Medium<span class="diff-time">Balanced</span></button>
-        <button class="diff-btn" onclick="setDiff('hard',this)">Hard<span class="diff-time">Precise</span></button>
+        <button class="diff-btn" onclick="setDiff('easy',this)">Easy<span class="diff-time">4.0 seconds</span></button>
+        <button class="diff-btn on" id="medium-btn" onclick="setDiff('medium',this)">Medium<span class="diff-time">2.5 seconds</span></button>
+        <button class="diff-btn" onclick="setDiff('hard',this)">Hard<span class="diff-time">1.5 seconds</span></button>
         <button class="diff-btn" id="daily-btn" onclick="setDaily(this)">Daily<br>Challenge</button>
       </div>
     </div>
@@ -1410,13 +1410,7 @@ const WORDS = [
   'KAOLIN','LINTEL','PUMICE','SHALE','TALLOW','WARREN','ZIRCON'
 ];
 
-// ── DIFFICULTY CONFIG ──
-const DIFF_CONFIG = {
-  easy:   { time: 4000, maxDE: 55 },
-  medium: { time: 2500, maxDE: 44 },
-  hard:   { time: 1500, maxDE: 35 },
-  daily:  { time: 1500, maxDE: 35 }
-};
+const DIFF_TIME = { easy: 4000, medium: 2500, hard: 1500 };
 
 let diff = 'medium';
 let seedNum = 0, seedStr = '', rng = null;
@@ -1742,7 +1736,7 @@ function refreshDailyBtn() {
 function setDaily(btn) {
   if (dailyAlreadyPlayed()) return;
   isDailyMode = true;
-  diff = 'daily';
+  diff = 'hard';
   document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
   const seed = getDailySeed();
@@ -1936,8 +1930,7 @@ function flashColour(c) {
   hint.textContent = 'Memorise this colour';
 
   const pf = document.getElementById('progress-fill');
-  const diffCfg = isDailyMode ? DIFF_CONFIG.daily : DIFF_CONFIG[diff];
-  const total = diffCfg.time;
+  const total = DIFF_TIME[diff];
   const start = Date.now();
 
   requestAnimationFrame(() => {
@@ -2084,8 +2077,7 @@ function lockGuess() {
   const labG = hsbToLab(gh, gs, gb);
   const de   = ciede2000(labT, labG);
 
-  const lockCfg = isDailyMode ? DIFF_CONFIG.daily : DIFF_CONFIG[diff];
-  const MAX_DE = lockCfg.maxDE;
+  const MAX_DE = 44;
   const tot = Math.max(0, 100 - (de / MAX_DE) * 100);
 
   const { sL, sC, sH } = ciede2000Parts(labT, labG);
@@ -2141,9 +2133,8 @@ nextBtn.onclick = nextRound;   // safety re-attach
 
   showScreen('result');
 
-  const lockedRound = round;
+  // Count-up + final population
   countUp(document.getElementById('res-score'), 0, tot, 800, () => {
-    if (round !== lockedRound) return;
     document.getElementById('res-grade').textContent = grade(tot);
 
     // Perceptual deltas
@@ -2200,7 +2191,7 @@ function showEnd() {
     swatch.appendChild(tBg);
     swatch.appendChild(gBg);
 
-    // info block
+    // info block — UPDATED TO MATCH NEW TERMINOLOGY
     const info = document.createElement('div');
     info.className = 'end-row-info';
     info.innerHTML = `
@@ -2210,17 +2201,17 @@ function showEnd() {
         <div class="end-row-axis">
           <div class="end-row-axis-label">Hue</div>
           <div class="end-row-axis-val">${fmt(r.sh)}</div>
-          <div class="end-row-axis-delta">${r.deltaH}° off</div>
+          <div class="end-row-axis-delta">ΔH′ = ${r.deltaH}</div>
         </div>
         <div class="end-row-axis">
-          <div class="end-row-axis-label">Sat</div>
+          <div class="end-row-axis-label">Chroma</div>
           <div class="end-row-axis-val">${fmt(r.ss)}</div>
-          <div class="end-row-axis-delta">${r.deltaC}% off</div>
+          <div class="end-row-axis-delta">ΔC′ = ${r.deltaC}</div>
         </div>
         <div class="end-row-axis">
-          <div class="end-row-axis-label">Bri</div>
+          <div class="end-row-axis-label">Light</div>
           <div class="end-row-axis-val">${fmt(r.sb)}</div>
-          <div class="end-row-axis-delta">${r.deltaL}% off</div>
+          <div class="end-row-axis-delta">ΔL* = ${r.deltaL}</div>
         </div>
       </div>
     `;
@@ -2353,31 +2344,31 @@ function openDetail(i) {
   html += e.rounds.map((r, ri) => {
     const tCol = hsl(r.t.h, r.t.s, r.t.b);
     const gCol = hsl(r.g.h, r.g.s, r.g.b);
-    return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+    return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
       <div style="width:48px;height:48px;border-radius:8px;overflow:hidden;position:relative;flex-shrink:0">
         <div style="position:absolute;inset:0;background:${tCol};clip-path:polygon(0 0,100% 0,100% 100%)"></div>
         <div style="position:absolute;inset:0;background:${gCol};clip-path:polygon(0 0,0 100%,100% 100%)"></div>
       </div>
       <div style="flex:1">
-        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px">
           <div style="font-size:9px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Round ${ri+1}</div>
           <div style="font-size:17px;font-weight:300;color:var(--bright)">${fmt(r.tot)}</div>
         </div>
-        <div style="display:flex;gap:0">
+        <div style="display:flex;gap:4px">
           <div style="flex:1;text-align:center">
-            <div style="font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">H</div>
-            <div style="font-size:11px;color:var(--sub)">${fmt(r.sh)}</div>
-            <div style="font-size:8px;color:var(--dim)">${r.dh}° off</div>
+            <div style="font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">Hue</div>
+            <div style="font-size:13px;color:var(--sub);margin-bottom:2px">${fmt(r.sh)}</div>
+            <div style="font-size:8px;color:var(--dim);line-height:1">ΔH′ = ${r.deltaH}</div>
           </div>
           <div style="flex:1;text-align:center">
-            <div style="font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">S</div>
-            <div style="font-size:11px;color:var(--sub)">${fmt(r.ss)}</div>
-            <div style="font-size:8px;color:var(--dim)">${r.ds.toFixed(1)}% off</div>
+            <div style="font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">Chroma</div>
+            <div style="font-size:13px;color:var(--sub);margin-bottom:2px">${fmt(r.ss)}</div>
+            <div style="font-size:8px;color:var(--dim);line-height:1">ΔC′ = ${r.deltaC}</div>
           </div>
           <div style="flex:1;text-align:center">
-            <div style="font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">B</div>
-            <div style="font-size:11px;color:var(--sub)">${fmt(r.sb)}</div>
-            <div style="font-size:8px;color:var(--dim)">${r.db.toFixed(1)}% off</div>
+            <div style="font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em">Light</div>
+            <div style="font-size:13px;color:var(--sub);margin-bottom:2px">${fmt(r.sb)}</div>
+            <div style="font-size:8px;color:var(--dim);line-height:1">ΔL* = ${r.deltaL}</div>
           </div>
         </div>
       </div>
@@ -2462,39 +2453,39 @@ freshSeedToInput();
 
 <!-- INFO MODAL -->
 <div id="info-modal" class="modal-overlay" role="dialog" aria-label="How to play" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeInfoModal()">
-  <div style="background:var(--bg2);border:0.5px solid var(--line2);border-radius:12px;max-width:480px;width:100%;max-height:80vh;overflow-y:auto;padding:28px 24px;position:relative">
+  <div style="background:var(--bg2);border:0.5px solid var(--line2);border-radius:12px;max-width:480px;width:100%;max-height:82vh;overflow-y:auto;padding:28px 24px;position:relative">
     <button onclick="closeInfoModal()" style="position:absolute;top:14px;right:14px;background:transparent;border:none;color:var(--dim);font-size:18px;cursor:pointer;line-height:1;font-family:var(--mono)">×</button>
 
     <div style="font-size:11px;letter-spacing:.22em;color:var(--dim);text-transform:uppercase;margin-bottom:16px">How to play</div>
 
-    <div style="font-size:13px;color:var(--sub);line-height:1.7;margin-bottom:20px">
-      A colour is shown for a few seconds. Memorise it. Then use the sliders to recreate it as accurately as you can. Five rounds per game — your score is averaged across all of them.
+    <div style="font-size:13px;color:var(--sub);line-height:1.7;margin-bottom:24px">
+      A colour flashes for a few seconds. Memorise it, then recreate it with the sliders. Five rounds — your score is the average.
     </div>
 
     <div style="height:0.5px;background:var(--line);margin-bottom:20px"></div>
 
     <div style="font-size:11px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;margin-bottom:12px">The three axes</div>
 
-    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+    <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:24px">
       <div style="display:flex;gap:12px;align-items:flex-start">
         <div style="width:32px;height:12px;border-radius:6px;flex-shrink:0;margin-top:3px;background:linear-gradient(to right,hsl(0,100%,50%),hsl(120,100%,50%),hsl(240,100%,50%),hsl(360,100%,50%))"></div>
         <div>
           <div style="font-size:10px;letter-spacing:.14em;color:var(--text);text-transform:uppercase;margin-bottom:2px">H — Hue</div>
-          <div style="font-size:11px;color:var(--mute);line-height:1.6">The base colour — red, green, blue, etc. Measured in degrees around a colour wheel, 0–360.</div>
+          <div style="font-size:11px;color:var(--mute);line-height:1.5">The colour itself (red, green, blue…)</div>
         </div>
       </div>
       <div style="display:flex;gap:12px;align-items:flex-start">
         <div style="width:32px;height:12px;border-radius:6px;flex-shrink:0;margin-top:3px;background:linear-gradient(to right,hsl(200,0%,50%),hsl(200,100%,50%))"></div>
         <div>
           <div style="font-size:10px;letter-spacing:.14em;color:var(--text);text-transform:uppercase;margin-bottom:2px">S — Saturation</div>
-          <div style="font-size:11px;color:var(--mute);line-height:1.6">How vivid or washed out. 0% is grey, 100% is fully vivid.</div>
+          <div style="font-size:11px;color:var(--mute);line-height:1.5">How vivid or washed-out</div>
         </div>
       </div>
       <div style="display:flex;gap:12px;align-items:flex-start">
         <div style="width:32px;height:12px;border-radius:6px;flex-shrink:0;margin-top:3px;background:linear-gradient(to right,#000,hsl(200,60%,50%),#fff)"></div>
         <div>
           <div style="font-size:10px;letter-spacing:.14em;color:var(--text);text-transform:uppercase;margin-bottom:2px">B — Brightness</div>
-          <div style="font-size:11px;color:var(--mute);line-height:1.6">How light or dark. 0% is black, 100% is full brightness.</div>
+          <div style="font-size:11px;color:var(--mute);line-height:1.5">How light or dark</div>
         </div>
       </div>
     </div>
@@ -2503,50 +2494,26 @@ freshSeedToInput();
 
     <div style="font-size:11px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;margin-bottom:12px">Scoring</div>
 
-    <div style="font-size:11px;color:var(--mute);line-height:1.7;margin-bottom:12px">
-      Scoring uses CIEDE2000 — the standard formula for perceptual colour difference. It measures how different two colours actually look to human eyes, not just how far apart their slider numbers are. Your score per round is 0–100, where 100 is a perfect match.
+    <div style="font-size:11px;color:var(--mute);line-height:1.7;margin-bottom:16px">
+      Uses <strong>CIEDE2000</strong> — the industry standard for perceptual colour difference.<br>
+      Each round shows your total score (0–100) plus separate breakdowns for Hue, Chroma and Lightness.
     </div>
 
-    <div style="background:var(--bg3);border-radius:6px;padding:12px 14px;margin-bottom:14px;display:flex;flex-direction:column;gap:8px">
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Hue</div>
-        <div style="font-size:11px;color:var(--sub);text-align:right">how far off the base colour angle was</div>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Chroma</div>
-        <div style="font-size:11px;color:var(--sub);text-align:right">how far off the vividness was</div>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Lightness</div>
-        <div style="font-size:11px;color:var(--sub);text-align:right">how far off the perceived brightness was</div>
-      </div>
-    </div>
-
-    <div style="font-size:11px;color:var(--mute);line-height:1.7;margin-bottom:20px">
-      Each axis score shows how well you matched that perceptual dimension independently. The final round score is a combined ΔE₀₀ — a single number representing the total visible difference.
+    <div style="background:var(--bg3);border-radius:6px;padding:12px 14px;margin-bottom:20px;display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;align-items:center;justify-content:space-between"><div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Hue</div><div style="font-size:11px;color:var(--sub)">base colour angle</div></div>
+      <div style="display:flex;align-items:center;justify-content:space-between"><div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Chroma</div><div style="font-size:11px;color:var(--sub)">vividness</div></div>
+      <div style="display:flex;align-items:center;justify-content:space-between"><div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Lightness</div><div style="font-size:11px;color:var(--sub)">perceived brightness</div></div>
     </div>
 
     <div style="height:0.5px;background:var(--line);margin-bottom:20px"></div>
 
     <div style="font-size:11px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;margin-bottom:12px">Difficulty</div>
 
-    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
-      <div style="display:flex;justify-content:space-between;align-items:baseline">
-        <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Easy</div>
-        <div style="font-size:11px;color:var(--sub);text-align:right">4 seconds to memorise · lenient scoring</div>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline">
-        <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Medium</div>
-        <div style="font-size:11px;color:var(--sub);text-align:right">2.5 seconds · balanced scoring</div>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline">
-        <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Hard</div>
-        <div style="font-size:11px;color:var(--sub);text-align:right">1.5 seconds · precision required</div>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline">
-        <div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Daily</div>
-        <div style="font-size:11px;color:var(--sub);text-align:right">hard rules · same colours for everyone · once per day</div>
-      </div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Easy</div><div style="font-size:11px;color:var(--sub)">4.0 s · lenient scoring</div></div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Medium</div><div style="font-size:11px;color:var(--sub)">2.5 s · balanced</div></div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Hard</div><div style="font-size:11px;color:var(--sub)">1.5 s · precision required</div></div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">Daily</div><div style="font-size:11px;color:var(--sub)">hard rules · one attempt per day</div></div>
     </div>
 
     <div style="height:0.5px;background:var(--line);margin-bottom:20px"></div>
@@ -2554,13 +2521,12 @@ freshSeedToInput();
     <div style="font-size:11px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;margin-bottom:12px">Seeds</div>
 
     <div style="font-size:11px;color:var(--mute);line-height:1.7">
-      Every game has a seed — a short code that locks in the exact set of colours. Share it with a friend to challenge them on the same colours. Enter their seed on the home screen to play their game.
+      Every game has a unique seed code. Share it with friends so they can play the exact same colours.
     </div>
 
-    <div style="height:0.5px;background:var(--line);margin-top:20px;margin-bottom:16px"></div>
+    <div style="height:0.5px;background:var(--line);margin-top:24px;margin-bottom:16px"></div>
 
     <div style="font-size:10px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;text-align:center">Made by snazzygaz</div>
-
   </div>
 </div>
 
@@ -2647,7 +2613,7 @@ window.addEventListener('popstate', function() {
         clearTimeout(backToastTimer);
         backPressedOnce = false;
         navStack.length = 0;
-        if (typeof flashTimer !== 'undefined' && flashTimer) { clearTimeout(flashTimer); clearInterval(flashTimer); flashTimer = null; }
+        if (typeof flashTimer !== 'undefined' && flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
         _origShowScreen('home');
         freshSeedToInput();
         ensureSentinel();
