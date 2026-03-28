@@ -2048,14 +2048,12 @@ function countUp(el, from, to, duration, onDone) {
 }
 
 function lockGuess() {
-  // 9. Pulse animation on lock button
+  // Pulse + haptic
   const lockBtn = document.getElementById('lock-btn');
   lockBtn.classList.add('lock-pulsing');
   lockBtn.addEventListener('animationend', () => lockBtn.classList.remove('lock-pulsing'), { once: true });
-
   if (navigator.vibrate) navigator.vibrate(12);
 
-  // Reset stage block back to neutral
   document.getElementById('stage-colour').style.background = 'var(--bg2)';
 
   const gh = +document.getElementById('sl-h').value;
@@ -2072,11 +2070,9 @@ function lockGuess() {
   const labG = hsbToLab(gh, gs, gb);
   const de   = ciede2000(labT, labG);
 
-  // Slightly harsher but still fair and even across the whole colour space
-  const MAX_DE = 44;
+  const MAX_DE = 44;                                      // ← harsher but even
   const tot = Math.max(0, 100 - (de / MAX_DE) * 100);
 
-  // Break ΔE₀₀ into its three perceptual components for the result panel
   const { sL, sC, sH } = ciede2000Parts(labT, labG);
   const sh = Math.max(0, 100 - (sH / MAX_DE) * 100);
   const ss = Math.max(0, 100 - (sC / MAX_DE) * 100);
@@ -2102,7 +2098,26 @@ function lockGuess() {
   resTgt.style.background = hsl(tc.h, tc.s, tc.b);
   resGss.style.background = hsl(gh, gs, gb);
 
-  // (your existing HSB value display on the swatches stays exactly as-is)
+  // HSB values on the swatches (this was missing — now restored)
+  document.getElementById('res-target-vals').innerHTML =
+    `<span style="opacity:.45">H</span> ${pad3(tc.h)}°<br>` +
+    `<span style="opacity:.45">S</span> ${tc.s.toFixed(1)}%<br>` +
+    `<span style="opacity:.45">B</span> ${tc.b.toFixed(1)}%`;
+
+  document.getElementById('res-guess-vals').innerHTML =
+    `<span style="opacity:.45">H</span> ${pad3(gh)}°<br>` +
+    `<span style="opacity:.45">S</span> ${gs.toFixed(1)}%<br>` +
+    `<span style="opacity:.45">B</span> ${gb.toFixed(1)}%`;
+
+  // Label colours
+  const tc_cols = labelColours(tc.h, tc.s, tc.b);
+  const gc_cols = labelColours(gh, gs, gb);
+  document.getElementById('res-target-vals').style.color = tc_cols.val;
+  document.getElementById('res-guess-vals').style.color = gc_cols.val;
+  const tLabel = document.getElementById('res-target-vals').parentElement;
+  const gLabel = document.getElementById('res-guess-vals').parentElement;
+  tLabel.querySelector('span').style.color = tc_cols.label;
+  gLabel.querySelector('span').style.color = gc_cols.label;
 
   document.getElementById('res-score').textContent = '—';
   document.getElementById('res-grade').textContent = '';
@@ -2110,11 +2125,11 @@ function lockGuess() {
 
   showScreen('result');
 
-  // Count up to the main perceptual score, then reveal everything else
+  // Count-up + final population
   countUp(document.getElementById('res-score'), 0, tot, 800, () => {
     document.getElementById('res-grade').textContent = grade(tot);
 
-    // Perceptual deltas in the three axis cells
+    // Perceptual deltas
     document.getElementById('ax-h').textContent = fmt(sh);
     document.getElementById('ax-hd').textContent = `ΔH′ = ${history[history.length-1].deltaH}`;
     document.getElementById('ax-s').textContent = fmt(ss);
@@ -2122,7 +2137,7 @@ function lockGuess() {
     document.getElementById('ax-l').textContent = fmt(sb);
     document.getElementById('ax-ld').textContent = `ΔL* = ${history[history.length-1].deltaL}`;
 
-    // Raw ΔE₀₀ under the big score (clinical transparency)
+    // Raw ΔE₀₀ under big score
     document.getElementById('res-score').insertAdjacentHTML('afterend',
       `<div style="font-size:9px;letter-spacing:.12em;color:var(--dim);margin-top:6px">ΔE₀₀ = ${de.toFixed(2)}</div>`);
   });
