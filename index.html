@@ -1870,7 +1870,7 @@ function startRound() {
   pf.style.transition = 'none';
   pf.style.width = '100%';
 
-// Show arc overlay, hide stage-meta during pre-countdown
+// ── Arc pre-countdown (3→2→1, ~1.65s total) ──
 const arcOverlay = document.getElementById('arc-overlay');
 const meta = document.getElementById('stage-meta');
 arcOverlay.style.display = 'flex';
@@ -1885,15 +1885,15 @@ arcNum.textContent = preCount;
 arcTrack.style.transition = 'none';
 arcTrack.style.strokeDashoffset = '0';
 
-if (flashTimer) clearInterval(flashTimer);
+if (flashTimer) clearTimeout(flashTimer);
 
 function stepArc() {
   preCount--;
   if (preCount <= 0) {
-    // Finished countdown — immediately reveal the colour
+    // Countdown finished — reveal the colour immediately
     arcOverlay.style.display = 'none';
     meta.style.display = '';
-    flashColour(c);
+    flashColour(c);               // ← c is now safely captured
   } else {
     arcNum.textContent = preCount;
     arcTrack.style.transition = 'stroke-dashoffset 0.55s ease';
@@ -1901,6 +1901,8 @@ function stepArc() {
     flashTimer = setTimeout(stepArc, 550);
   }
 }
+
+flashTimer = setTimeout(stepArc, 550);
 
 flashTimer = setTimeout(stepArc, 550);
 
