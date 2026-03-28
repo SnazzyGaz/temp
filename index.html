@@ -2070,7 +2070,7 @@ function lockGuess() {
   const labG = hsbToLab(gh, gs, gb);
   const de   = ciede2000(labT, labG);
 
-  const MAX_DE = 44;                                      // ← harsher but even
+  const MAX_DE = 44;
   const tot = Math.max(0, 100 - (de / MAX_DE) * 100);
 
   const { sL, sC, sH } = ciede2000Parts(labT, labG);
@@ -2098,7 +2098,7 @@ function lockGuess() {
   resTgt.style.background = hsl(tc.h, tc.s, tc.b);
   resGss.style.background = hsl(gh, gs, gb);
 
-  // HSB values on the swatches (this was missing — now restored)
+  // HSB values on swatches (restored)
   document.getElementById('res-target-vals').innerHTML =
     `<span style="opacity:.45">H</span> ${pad3(tc.h)}°<br>` +
     `<span style="opacity:.45">S</span> ${tc.s.toFixed(1)}%<br>` +
@@ -2109,7 +2109,6 @@ function lockGuess() {
     `<span style="opacity:.45">S</span> ${gs.toFixed(1)}%<br>` +
     `<span style="opacity:.45">B</span> ${gb.toFixed(1)}%`;
 
-  // Label colours
   const tc_cols = labelColours(tc.h, tc.s, tc.b);
   const gc_cols = labelColours(gh, gs, gb);
   document.getElementById('res-target-vals').style.color = tc_cols.val;
@@ -2137,9 +2136,12 @@ function lockGuess() {
     document.getElementById('ax-l').textContent = fmt(sb);
     document.getElementById('ax-ld').textContent = `ΔL* = ${history[history.length-1].deltaL}`;
 
-    // Raw ΔE₀₀ under big score
+    // Raw ΔE₀₀ — prevent accumulation by removing any previous one first
+    const existing = document.getElementById('res-deltae');
+    if (existing) existing.remove();
+
     document.getElementById('res-score').insertAdjacentHTML('afterend',
-      `<div style="font-size:9px;letter-spacing:.12em;color:var(--dim);margin-top:6px">ΔE₀₀ = ${de.toFixed(2)}</div>`);
+      `<div id="res-deltae" style="font-size:9px;letter-spacing:.12em;color:var(--dim);margin-top:6px">ΔE₀₀ = ${de.toFixed(2)}</div>`);
   });
 }
 
