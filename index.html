@@ -1,3 +1,5 @@
+html
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -258,9 +260,6 @@ html, body {
 }
 .seed-random-btn:hover { border-color: var(--mute); color: var(--sub); }
 .seed-random-btn:active { transform: rotate(180deg); }
-
-
-
 .tip-text {
   font-size: 9px;
   letter-spacing: .05em;
@@ -883,8 +882,6 @@ html, body {
   .slider-track { height: 22px; border-radius: 11px; }
   .slider-thumb { width: 34px; height: 34px; border-width: 2px; }
   .slider-native { height: 52px; }
-
-
   /* ── RESULT ── */
   #result { flex-direction: column; overflow: hidden; }
 
@@ -1264,6 +1261,9 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
     
     <!-- NEW: Daily Leaderboard button on home -->
     <button id="home-leaderboard-btn" class="ghost-btn" onclick="showDailyLeaderboard()">Daily Leaderboard</button>
+    
+    <!-- DEV ONLY: temporary daily unlock for testing -->
+    <button onclick="devResetDaily()" style="margin-top:8px;font-size:9px;opacity:0.25;background:transparent;border:none;color:var(--dim);padding:4px 8px;cursor:pointer">DEV: Reset Daily Lock</button>
   </div>
 </div>
 
@@ -1412,7 +1412,6 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
 
   <!-- Daily leaderboard buttons (only visible in daily mode) -->
   <button id="submit-daily-btn" class="primary-btn" onclick="submitDailyScore()" style="display:none;background:#7ec8a0;color:#26262a;margin-top:12px">Submit to Daily Leaderboard</button>
-  <button id="view-daily-btn" class="ghost-btn" onclick="showDailyLeaderboard()" style="display:none">View today’s leaderboard</button>
 </div>
 </div>
 
@@ -1583,8 +1582,6 @@ function makeSeedStr() {
   const n = Math.floor(Math.random() * 9000) + 1000;
   return WORDS[wordIndex] + '-' + String(n).padStart(4, '0');
 }
-
-
 function perceivedLuminance(h, s, b) {
   return (b / 100) * (1 - (s / 100) * 0.3);
 }
@@ -2277,7 +2274,6 @@ function showEnd() {
 
   // Show daily leaderboard buttons only if this was a daily game
   if (isDailyMode) {
-    document.getElementById('view-daily-btn').style.display = 'block';
     if (!dailyScoreSubmitted) {
       document.getElementById('submit-daily-btn').style.display = 'block';
     }
@@ -2737,31 +2733,28 @@ function initFirebase() {
 }
 
 async function submitDailyScore() {
-  if (!isDailyMode || dailyScoreSubmitted) return;   // ← prevents duplicates
+  if (!isDailyMode || dailyScoreSubmitted) return;
   initFirebase();
   const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-  const name = prompt('Enter nickname (optional – max 12 chars)', 'Anonymous') || 'Anonymous';
+  const name = prompt('Enter nickname (max 4 letters)', 'ANON') || 'ANON';
 
   try {
     await fbDb.collection('daily-scores').doc(todayKey).collection('scores').add({
       date: todayKey,
-      name: name.slice(0,12),
+      name: name.toUpperCase().slice(0,4),   // ← now strictly 4 letters max
       score: parseFloat(avg.toFixed(2)),
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    // Success!
     dailyScoreSubmitted = true;
     alert('✅ Score submitted to the daily leaderboard!');
     
-    // Hide the submit button so you can't spam it
     const submitBtn = document.getElementById('submit-daily-btn');
     if (submitBtn) {
       submitBtn.style.display = 'none';
       submitBtn.textContent = '✅ Already submitted';
     }
     
-    // Automatically open the leaderboard so you can see your rank
     showDailyLeaderboard();
   } catch(e) {
     console.error(e);
@@ -2782,7 +2775,8 @@ async function showDailyLeaderboard() {
       .limit(100)
       .get();
 
-    let html = `<div style="font-size:13px;margin-bottom:12px">Today’s Daily Challenge — ${todayKey}</div>`;
+    const dailySeed = getDailySeed();
+let html = `<div style="font-size:13px;margin-bottom:12px">Today’s Daily Challenge — ${dailySeed}</div>`;
     html += `<table style="width:100%;border-collapse:collapse"><thead><tr style="font-size:10px;letter-spacing:.2em;color:var(--dim)"><th style="text-align:left;padding:8px">RANK</th><th style="text-align:left;padding:8px">NAME</th><th style="text-align:right;padding:8px">SCORE</th></tr></thead><tbody>`;
 
     let rank = 1;
@@ -2806,6 +2800,14 @@ async function showDailyLeaderboard() {
 
 function hideDailyLeaderboard() {
   document.getElementById('daily-leaderboard-modal').style.display = 'none';
+}
+
+// ── DEV ONLY: temporary daily unlock for testing ──
+function devResetDaily() {
+  localStorage.removeItem('chromemory_daily');
+  dailyScoreSubmitted = false;
+  refreshDailyBtn();
+  alert('✅ Daily lock cleared — you can play again!');
 }
 </script>
 
@@ -2945,3 +2947,4 @@ if ('serviceWorker' in navigator) {
 </script>
 </body>
 </html>
+
