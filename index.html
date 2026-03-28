@@ -2076,7 +2076,7 @@ function lockGuess() {
 
   // Map ΔE₀₀ → 0–100. MAX_DE is the "completely wrong" ceiling (~55 covers the
   // worst realistic miss in the game's colour space).
-  const MAX_DE = 55;
+  const MAX_DE = 44;
   const tot = Math.max(0, 100 - (de / MAX_DE) * 100);
 
   // Break ΔE₀₀ into its three perceptual components for the result panel display.
