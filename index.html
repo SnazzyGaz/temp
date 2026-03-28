@@ -1260,8 +1260,6 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
     <!-- NEW: Daily Leaderboard button on home -->
     <button id="home-leaderboard-btn" class="ghost-btn" onclick="showDailyLeaderboard()">Daily Leaderboard</button>
     
-    <!-- DEV ONLY: temporary daily unlock for testing -->
-    <button onclick="devResetDaily()" style="margin-top:8px;font-size:9px;opacity:0.25;background:transparent;border:none;color:var(--dim);padding:4px 8px;cursor:pointer">DEV: Reset Daily Lock</button>
   </div>
 </div>
 
@@ -2566,7 +2564,17 @@ freshSeedToInput();
 
     <div style="height:0.5px;background:var(--line);margin-top:24px;margin-bottom:16px"></div>
 
-    <div style="font-size:10px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;text-align:center">Made by snazzygaz</div>
+    <div style="font-size:10px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;text-align:center">
+  Made by 
+  <a href="https://www.instagram.com/snazzygaz/" 
+     target="_blank" 
+     rel="noopener noreferrer"
+     style="color:var(--sub); text-decoration:none; transition:color .2s;"
+     onmouseover="this.style.color='var(--bright)'"
+     onmouseout="this.style.color='var(--sub)'">
+    @snazzygaz
+  </a>
+</div>
   </div>
 </div>
 
@@ -2800,13 +2808,6 @@ function hideDailyLeaderboard() {
   document.getElementById('daily-leaderboard-modal').style.display = 'none';
 }
 
-// ── DEV ONLY: temporary daily unlock for testing ──
-function devResetDaily() {
-  localStorage.removeItem('chromemory_daily');
-  dailyScoreSubmitted = false;
-  refreshDailyBtn();
-  alert('✅ Daily lock cleared — you can play again!');
-}
 </script>
 
 <script>
