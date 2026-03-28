@@ -1870,45 +1870,39 @@ function startRound() {
   pf.style.transition = 'none';
   pf.style.width = '100%';
 
-  // Show arc overlay, hide stage-meta during pre-countdown
-  const arcOverlay = document.getElementById('arc-overlay');
-  const meta = document.getElementById('stage-meta');
-  arcOverlay.style.display = 'flex';
-  meta.style.display = 'none';
+// Show arc overlay, hide stage-meta during pre-countdown
+const arcOverlay = document.getElementById('arc-overlay');
+const meta = document.getElementById('stage-meta');
+arcOverlay.style.display = 'flex';
+meta.style.display = 'none';
 
-  const arcNum = document.getElementById('arc-num');
-  const arcTrack = document.getElementById('arc-track');
-  const circumference = 314.16;
+const arcNum = document.getElementById('arc-num');
+const arcTrack = document.getElementById('arc-track');
+const circumference = 314.16;
 
-  let preCount = 3;
-  arcNum.textContent = preCount;
-  arcTrack.style.transition = 'none';
-  arcTrack.style.strokeDashoffset = '0';
+let preCount = 3;
+arcNum.textContent = preCount;
+arcTrack.style.transition = 'none';
+arcTrack.style.strokeDashoffset = '0';
 
-  if (flashTimer) clearInterval(flashTimer);
+if (flashTimer) clearInterval(flashTimer);
 
-  function stepArc() {
-    preCount--;
-    if (preCount <= 0) {
-      // Show 0, sweep to full circle, then hide and reveal colour
-      arcNum.textContent = '0';
-      arcTrack.style.transition = 'stroke-dashoffset 0.7s ease';
-      arcTrack.style.strokeDashoffset = circumference;
-      flashTimer = setTimeout(() => {
-        arcOverlay.style.display = 'none';
-        meta.style.display = '';
-        flashColour(c);
-      }, 750);
-    } else {
-      arcNum.textContent = preCount;
-      arcTrack.style.transition = 'stroke-dashoffset 0.7s ease';
-      arcTrack.style.strokeDashoffset = ((3 - preCount) / 3) * circumference;
-      flashTimer = setTimeout(stepArc, 800);
-    }
+function stepArc() {
+  preCount--;
+  if (preCount <= 0) {
+    // Finished countdown — immediately reveal the colour
+    arcOverlay.style.display = 'none';
+    meta.style.display = '';
+    flashColour(c);
+  } else {
+    arcNum.textContent = preCount;
+    arcTrack.style.transition = 'stroke-dashoffset 0.55s ease';
+    arcTrack.style.strokeDashoffset = ((3 - preCount) / 3) * circumference;
+    flashTimer = setTimeout(stepArc, 550);
   }
-
-  flashTimer = setTimeout(stepArc, 800);
 }
+
+flashTimer = setTimeout(stepArc, 550);
 
 function flashColour(c) {
   document.getElementById('stage-colour').style.background = hsl(c.h, c.s, c.b);
