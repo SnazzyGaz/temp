@@ -968,6 +968,7 @@ html, body {
   }
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -1395,11 +1396,21 @@ c-374 9 -584 55 -812 177 -141 76 -329 320 -247 320 7 0 40 -34 73 -76z m-136
   <div class="ctrl-wordmark">Game complete</div>
   <div class="end-score" id="end-score" aria-live="polite">—</div>
   <div class="end-grade" id="end-grade">—</div>
-  <div class="seed-reveal" onclick="copySeed()" style="cursor:pointer" title="Tap to copy">
+    <div class="seed-reveal" onclick="copySeed()" style="cursor:pointer" title="Tap to copy">
     <div class="seed-reveal-label">Seed — tap to copy</div>
     <div class="seed-reveal-code" id="end-seed">—</div>
     <div class="seed-reveal-hint">Send this to a friend to challenge them on the exact same colours</div>
   </div>
+
+  <!-- CLEAN QR CODE (easy to scan) -->
+  <div style="margin:24px 0 16px;text-align:center">
+    <div style="font-size:9px;letter-spacing:.18em;color:var(--dim);margin-bottom:8px">SCAN TO PLAY THIS EXACT GAME</div>
+    <div id="qr-container" 
+         style="display:inline-block;padding:14px;background:#ffffff;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.15)">
+    </div>
+    <div style="font-size:9px;color:var(--dim);margin-top:8px">or copy the seed above</div>
+  </div>
+
   <div class="hist-list" id="hist-list"></div>
 
   <button class="primary-btn" onclick="goHome()">Main Menu</button>
@@ -2255,6 +2266,18 @@ function showEnd() {
   // keep hist-list empty — breakdown is now in the stage
   document.getElementById('hist-list').innerHTML = '';
   showScreen('end');
+ // ── NEW: Generate clean QR ──
+  const qrUrl = `https://snazzygaz.github.io/chromemory/?seed=${seedStr}`;
+  const qrContainer = document.getElementById('qr-container');
+  qrContainer.innerHTML = '';                     // clear any old QR
+  new QRCode(qrContainer, {
+      text: qrUrl,
+      width: 260,
+      height: 260,
+      colorDark: "#000000",
+      colorLight: "#ffffff",
+      correctLevel: QRCode.CorrectLevel.H
+  });
 
   countUp(document.getElementById('end-score'), 0, avg, 1000, () => {
     let gradeText = grade(avg) + ' — avg per round';
