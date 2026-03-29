@@ -2717,6 +2717,13 @@ window.history.replaceState({ base: true }, '');
 ensureSentinel();
 refreshDailyBtn();
 
+</script>
+
+<!-- Firebase SDK — must load before any code that references firebase.* -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+<script>
 // ==================== YOUR FIREBASE CONFIG ====================
 const firebaseConfig = {
   apiKey: "AIzaSyCUdL4rxHpWTtz_S1X_hJ4sN5hfYHhvr0Q",
@@ -2742,30 +2749,90 @@ async function submitDailyScore() {
   if (!isDailyMode || dailyScoreSubmitted) return;
   initFirebase();
   const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-  const name = prompt('Enter nickname (max 4 letters)', 'ANON') || 'ANON';
+
+  // Custom name-entry modal (replaces prompt() which is blocked in iOS PWA standalone mode)
+  const name = await askForName();
+  if (!name) return; // user cancelled
 
   try {
     await fbDb.collection('daily-scores').doc(todayKey).collection('scores').add({
       date: todayKey,
-      name: name.toUpperCase().slice(0,4),   // ← now strictly 4 letters max
+      name: name.toUpperCase().trim().slice(0,4),
       score: parseFloat(avg.toFixed(2)),
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     dailyScoreSubmitted = true;
-    alert('✅ Score submitted to the daily leaderboard!');
-    
+
     const submitBtn = document.getElementById('submit-daily-btn');
-    if (submitBtn) {
-      submitBtn.style.display = 'none';
-      submitBtn.textContent = '✅ Already submitted';
-    }
-    
+    if (submitBtn) submitBtn.style.display = 'none';
+
     showDailyLeaderboard();
   } catch(e) {
     console.error(e);
-    alert('Could not submit – check your config');
+    showNameModalError('Could not submit — check your connection');
   }
+}
+
+function askForName() {
+  return new Promise(resolve => {
+    // Remove any leftover modal
+    const old = document.getElementById('name-entry-modal');
+    if (old) old.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'name-entry-modal';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:10000;font-family:var(--mono)';
+
+    overlay.innerHTML = `
+      <div style="background:var(--bg2);border:0.5px solid var(--line2);border-radius:6px;padding:28px 24px;width:min(320px,90vw);display:flex;flex-direction:column;gap:14px">
+        <div style="font-size:9px;letter-spacing:.2em;color:var(--dim);text-transform:uppercase">Submit Score</div>
+        <div style="font-size:13px;color:var(--text);line-height:1.5">Enter a nickname for the leaderboard (1–4 letters)</div>
+        <input id="name-entry-input" type="text" maxlength="4"
+          autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+          placeholder="ANON"
+          style="background:var(--bg3);border:0.5px solid var(--line2);color:var(--bright);font-family:var(--mono);font-size:18px;letter-spacing:.2em;text-transform:uppercase;padding:11px 14px;border-radius:3px;outline:none;text-align:center;width:100%">
+        <div id="name-entry-error" style="font-size:9px;color:#e85454;letter-spacing:.06em;min-height:14px;display:none"></div>
+        <div style="display:flex;gap:8px">
+          <button id="name-entry-cancel" style="flex:1;padding:11px;background:transparent;border:0.5px solid var(--line2);color:var(--sub);font-family:var(--mono);font-size:11px;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;border-radius:3px">Cancel</button>
+          <button id="name-entry-submit" style="flex:2;padding:11px;background:#7ec8a0;border:none;color:#26262a;font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;border-radius:3px">Submit</button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+
+    const input = document.getElementById('name-entry-input');
+    const errEl = document.getElementById('name-entry-error');
+    const submitBtn = document.getElementById('name-entry-submit');
+    const cancelBtn = document.getElementById('name-entry-cancel');
+
+    // Force uppercase as user types
+    input.addEventListener('input', () => { input.value = input.value.toUpperCase().replace(/[^A-Z]/g, ''); });
+
+    // Focus after a tick (needed for iOS)
+    setTimeout(() => input.focus(), 80);
+
+    function doSubmit() {
+      const val = input.value.trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0,4) || 'ANON';
+      overlay.remove();
+      resolve(val);
+    }
+
+    function doCancel() {
+      overlay.remove();
+      resolve(null);
+    }
+
+    submitBtn.addEventListener('click', doSubmit);
+    cancelBtn.addEventListener('click', doCancel);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') doSubmit(); if (e.key === 'Escape') doCancel(); });
+    overlay.addEventListener('click', e => { if (e.target === overlay) doCancel(); });
+  });
+}
+
+function showNameModalError(msg) {
+  // Show a brief toast-style error since the modal is gone by this point
+  _showBackToast(msg);
 }
 
 async function showDailyLeaderboard() {
@@ -2800,7 +2867,7 @@ let html = `<div style="font-size:13px;margin-bottom:12px">Today’s Daily Chall
     html += `</tbody></table>`;
     body.innerHTML = html;
   } catch(e) {
-    body.innerHTML = `<div style="padding:40px;text-align:center;color:#e85454">Firebase not configured yet</div>`;
+    body.innerHTML = `<div style="padding:40px;text-align:center;color:#e85454">Could not load scores — check your connection</div>`;
   }
 }
 
@@ -2934,12 +3001,6 @@ window.addEventListener('load', () => {
 });
 </script>
 
-</script>
-
-<!-- Firebase SDK (required for the Daily Leaderboard) -->
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-
 <script>
   // Service Worker registration (PWA)
   if ('serviceWorker' in navigator) {
@@ -2949,4 +3010,3 @@ window.addEventListener('load', () => {
 </script>
 </body>
 </html>
-
