@@ -2328,10 +2328,6 @@ function copyLinkToClipboard() {
   });
 }
 
-function hideShareQR() {
-  const modal = document.getElementById('share-qr-modal');
-  if (modal) modal.style.display = 'none';
-}
 
 function copySeed() {
   // Used by seed-reveal tap on desktop end screen
@@ -3043,17 +3039,7 @@ window.addEventListener('load', () => {
       .catch(err => console.log('Service worker registration failed:', err));
   }
 </script>
-<!-- SHARE QR MODAL (clean QR only when you tap Share) -->
-<div id="share-qr-modal" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:130;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)hideShareQR()">
-  <div style="background:var(--bg2);border:0.5px solid var(--line2);border-radius:16px;padding:24px;max-width:340px;width:100%;text-align:center">
-    <div style="font-size:11px;letter-spacing:.18em;color:var(--dim);margin-bottom:12px">SCAN TO PLAY THIS EXACT GAME</div>
-    <div id="share-qr-container" style="display:inline-block;padding:16px;background:#ffffff;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.2)"></div>
-    <div style="margin-top:16px;font-size:9px;color:var(--dim)">or share the link below</div>
-    <div id="share-qr-url" style="font-size:11px;letter-spacing:.08em;color:var(--mute);margin:8px 0 16px;word-break:break-all"></div>
-    
-    <button onclick="hideShareQR()" class="ghost-btn" style="width:100%;margin-bottom:8px">Close</button>
-  </div>
-</div>
+
 <!-- CUSTOM SHARE SHEET (mimics native share tray + clean QR) -->
 <div id="custom-share-modal" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.9);z-index:140;align-items:flex-end;justify-content:center;padding:0 0 env(safe-area-inset-bottom,20px)" onclick="if(event.target===this)hideCustomShare()">
   <div style="background:var(--bg2);border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 20px 30px;box-shadow:0 -4px 30px rgba(0,0,0,0.4)">
