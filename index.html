@@ -445,6 +445,32 @@ html, body {
   border-radius: 5px;
   overflow: hidden;
 }
+/* Hue track - drum model, clipped to track bounds like S and B */
+#track-h {
+  overflow: hidden;
+  cursor: ew-resize;
+}
+/* The scrolling tape - fills track exactly, gradient shifts underneath */
+.hue-tape {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  will-change: background-position;
+}
+/* Centre pick-point notch - sits above tape via z-index */
+#track-h::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: rgba(255,255,255,0.9);
+  box-shadow: 0 0 3px rgba(0,0,0,0.6);
+  z-index: 3;
+  pointer-events: none;
+}
 .slider-fill {
   display: none;
 }
@@ -460,6 +486,10 @@ html, body {
   pointer-events: none;
   z-index: 1;
 }
+/* Hue thumb sits fixed at centre */
+#thumb-h {
+  left: 50% !important;
+}
 
 .slider-native {
   position: absolute;
@@ -471,6 +501,10 @@ html, body {
   transform: translateY(-50%);
   left: 0;
   z-index: 2;
+}
+/* No native input on hue — drag handled in JS */
+#sl-h {
+  display: none;
 }
 
 .slider-val {
@@ -976,6 +1010,8 @@ html, body {
   <div class="home-inner">
 
     <button onclick="openInfoModal()" style="position:absolute;top:calc(env(safe-area-inset-top, 0px) + 16px);right:16px;width:28px;height:28px;border-radius:50%;background:transparent;border:0.5px solid var(--line2);color:var(--mute);font-family:var(--mono);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;z-index:10" onmouseover="this.style.borderColor='var(--mute)';this.style.color='var(--sub)'" onmouseout="this.style.borderColor='var(--line2)';this.style.color='var(--mute)'">?</button>
+    <button onclick="openStatsModal()" title="Stats &amp; Achievements" style="position:absolute;top:calc(env(safe-area-inset-top, 0px) + 16px);right:52px;width:28px;height:28px;border-radius:50%;background:transparent;border:0.5px solid var(--line2);color:var(--mute);font-family:var(--mono);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;z-index:10" onmouseover="this.style.borderColor='var(--mute)';this.style.color='var(--sub)'" onmouseout="this.style.borderColor='var(--line2)';this.style.color='var(--mute)'">≡</button>
+    <button onclick="openOptionsModal()" title="Options" style="position:absolute;top:calc(env(safe-area-inset-top, 0px) + 16px);right:88px;width:28px;height:28px;border-radius:50%;background:transparent;border:0.5px solid var(--line2);color:var(--mute);font-family:var(--mono);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;z-index:10" onmouseover="this.style.borderColor='var(--mute)';this.style.color='var(--sub)'" onmouseout="this.style.borderColor='var(--line2)';this.style.color='var(--mute)'">⚙</button>
 
     <button id="update-btn" title="Check for updates" onclick="checkForUpdate(true)">↑</button>
 
@@ -1293,9 +1329,8 @@ c-173 87 -203 93 -494 103 -140 4 -275 11 -300 14 -65 9 -203 45 -214 55 -19
       <div class="slider-row">
         <span class="slider-axis">H</span>
         <div class="slider-track" id="track-h">
-          <div class="slider-fill" id="fill-h" style="width:50%"></div>
+          <div class="hue-tape" id="hue-tape"></div>
           <div class="slider-thumb" id="thumb-h" style="left:50%"></div>
-          <input class="slider-native" type="range" min="0" max="360" step="1" id="sl-h" value="180" oninput="updateSlider('h')" aria-label="Hue">
         </div>
         <span class="slider-val" id="val-h">180°</span>
       </div>
@@ -1550,16 +1585,76 @@ function grade(n) {
   return tier.msgs[Math.floor(Math.random() * tier.msgs.length)];
 }
 
+// ── HUE NAME LOOKUP ──
+function hueName(h) {
+  h = ((h % 360) + 360) % 360;
+  if (h < 15  || h >= 345) return 'red';
+  if (h < 40)  return 'orange';
+  if (h < 65)  return 'yellow';
+  if (h < 90)  return 'yellow-green';
+  if (h < 150) return 'green';
+  if (h < 175) return 'teal';
+  if (h < 200) return 'cyan';
+  if (h < 270) return 'blue';
+  if (h < 300) return 'purple';
+  if (h < 330) return 'magenta';
+  return 'pink';
+}
+
+// ── CLOSE CALL TIPS ──
+function closeCallTip(de) {
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+  if (de < 1.0) {
+    return pick([
+      'practically imperceptible',
+      'virtually identical',
+      'almost indistinguishable',
+      'the difference is academic',
+      "a human eye can't split that",
+      "that's essentially perfect",
+      'the delta is negligible',
+      'an instrument would struggle',
+      'colour memory at its finest',
+      "that's as close as it gets"
+    ]);
+  }
+  if (de < 2.5 && Math.random() < 0.60) {
+    return pick([
+      'barely a trace off',
+      'almost no difference there',
+      'nearly imperceptible',
+      "that's extremely close",
+      'only just distinguishable',
+      'a very fine miss',
+      'the gap is tiny',
+      'razor close',
+      'almost had it exactly',
+      'impressive recall'
+    ]);
+  }
+  if (de < 4.0 && Math.random() < 0.35) {
+    return pick([
+      'very close',
+      'nearly had it',
+      'a small miss',
+      'close but not quite',
+      'almost locked in',
+      'just shy of it',
+      'a fine margin',
+      'nearly there',
+      'just a touch off',
+      'good memory, fine miss'
+    ]);
+  }
+  return null;
+}
+
 // ── PERCEPTUAL TIP ──
-// Fires on the result screen only. Finds the worst axis delta, rolls
-// probability (25% at delta=5 → 100% at delta=10), then returns a
-// bucketed directional tip string or null. Perplexed tier fires at
-// raw ΔE₀₀ > 35 with 85% probability and overrides everything.
 function perceptualTip(labTarget, labGuess, gH, gS, gB, tH, tS, tB, de) {
   const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
-  // ── Perplexed tier — overrides axis tips ──
-  if (de > 35 && Math.random() < 0.85) {
+  // Perplexed tier — guaranteed override at ΔE₀₀ > 35
+  if (de > 35) {
     return pick([
       'come on now',
       'were you even looking?',
@@ -1593,64 +1688,88 @@ function perceptualTip(labTarget, labGuess, gH, gS, gB, tH, tS, tB, de) {
 
   if (worst.delta < THRESHOLD) return null;
 
-  // Probability roll — linear from BASE_PROB at THRESHOLD to 1.0 at FULL_PROB_AT
   const t = Math.min((worst.delta - THRESHOLD) / (FULL_PROB_AT - THRESHOLD), 1);
   const prob = BASE_PROB + (1 - BASE_PROB) * t;
   if (Math.random() > prob) return null;
 
-  // ── Band helper ──
   const band = d => d < 8 ? 'S' : d < 14 ? 'M' : 'L';
 
-  // ── Lightness ──
+  // Lightness
   if (worst.key === 'L') {
     if (gB > tB) {
-      // Too bright
       return pick({
-        S: ['a touch too bright', 'slightly too light', 'just a hair too bright', 'barely too light', 'fractionally too bright', 'landed too light', 'a whisper too bright', 'only just too bright', 'nudged it too bright', 'crept into the light'],
-        M: ['quite a bit too bright', 'noticeably too light', 'too much brightness', 'pushed the brightness too far', 'clearly too light', 'overshooting the brightness', 'brighter than it needed', 'brightness crept up', 'a fair bit too bright', 'light got away from you'],
-        L: ['way too bright', 'far too light', 'massively overlit', 'brightness through the roof', 'washed it right out', 'thoroughly overexposed', 'practically glowing', 'turned the lights up way too high', 'blinding', 'overlit by a mile'],
+        S: ['a touch too bright','slightly too light','just a hair too bright','barely too light','fractionally too bright','landed too light','a whisper too bright','only just too bright','nudged it too bright','crept into the light'],
+        M: ['quite a bit too bright','noticeably too light','too much brightness','pushed the brightness too far','clearly too light','overshooting the brightness','brighter than it needed','brightness crept up','a fair bit too bright','light got away from you'],
+        L: ['way too bright','far too light','massively overlit','brightness through the roof','washed it right out','thoroughly overexposed','practically glowing','turned the lights up way too high','blinding','overlit by a mile'],
       }[band(worst.delta)]);
     } else {
-      // Too dark
       return pick({
-        S: ['a bit too dark', 'pushed it too dark', 'just a shade too dark', 'slightly underlit', 'barely too dark', 'fractionally too dim', 'just a hair too dim', 'nudged it too dark', 'a touch too dim', 'landed too dark'],
-        M: ['quite a bit too dark', 'noticeably too dark', 'clearly too dim', 'undershooting the brightness', 'darker than it needed', 'brightness fell short', 'dimmed it too much', 'a fair bit too dark', 'dimmed beyond recognition', 'duller than it should be'],
-        L: ['way too dark', 'far too dim', 'lost in the shadows', 'nearly pitch black', 'dragged it into the dark', 'severely underlit', 'thoroughly underexposed', 'buried in shadow', 'deep in the dark', 'almost no brightness there'],
+        S: ['a bit too dark','pushed it too dark','just a shade too dark','slightly underlit','barely too dark','fractionally too dim','just a hair too dim','nudged it too dark','a touch too dim','landed too dark'],
+        M: ['quite a bit too dark','noticeably too dark','clearly too dim','undershooting the brightness','darker than it needed','brightness fell short','dimmed it too much','a fair bit too dark','dimmed beyond recognition','duller than it should be'],
+        L: ['way too dark','far too dim','lost in the shadows','nearly pitch black','dragged it into the dark','severely underlit','thoroughly underexposed','buried in shadow','deep in the dark','almost no brightness there'],
       }[band(worst.delta)]);
     }
   }
 
-  // ── Chroma ──
+  // Chroma
   if (worst.key === 'C') {
     if (gS > tS) {
-      // Too saturated
       return pick({
-        S: ['a touch too saturated', 'slightly too vivid', 'just a hair too punchy', 'barely too vivid', 'a hint too much colour', 'fractionally oversaturated', 'colour crept up slightly', 'a whisper too colourful', 'only just oversaturated', 'nudged the vividness too far'],
-        M: ['quite oversaturated', 'noticeably too vivid', 'too much colour in there', 'clearly too saturated', 'vividness got away from you', 'colour pushed a bit far', 'punched the colour too hard', 'a fair bit too vivid', 'overshooting the saturation', 'more colourful than it needed'],
-        L: ['way too saturated', 'far too vivid', 'cranked the colour right up', 'saturated beyond recognition', 'practically neon', 'colour went into overdrive', 'vividness through the roof', 'blasted with colour', 'dialled to eleven', 'colour absolutely maxed out'],
+        S: ['a touch too saturated','slightly too vivid','just a hair too punchy','barely too vivid','a hint too much colour','fractionally oversaturated','colour crept up slightly','a whisper too colourful','only just oversaturated','nudged the vividness too far'],
+        M: ['quite oversaturated','noticeably too vivid','too much colour in there','clearly too saturated','vividness got away from you','colour pushed a bit far','punched the colour too hard','a fair bit too vivid','overshooting the saturation','more colourful than it needed'],
+        L: ['way too saturated','far too vivid','cranked the colour right up','saturated beyond recognition','practically neon','colour went into overdrive','vividness through the roof','blasted with colour','dialled to eleven','colour absolutely maxed out'],
       }[band(worst.delta)]);
     } else {
-      // Too grey
       return pick({
-        S: ['needed more saturation', 'a bit washed out', 'could\'ve been more vivid', 'just a touch more colour needed', 'slightly too grey', 'barely undersaturated', 'a hint more vividness needed', 'fractionally too muted', 'colour fell just short', 'too close to grey'],
-        M: ['quite undersaturated', 'noticeably washed out', 'needed a lot more colour', 'clearly too muted', 'colour fell short', 'greyer than it needed', 'a fair bit too washed out', 'undershooting the vividness', 'a fair bit too grey', 'more muted than it should be'],
-        L: ['very undersaturated', 'drained of colour', 'almost greyscale', 'thoroughly dull', 'saturation nowhere to be found', 'nearly all the colour gone', 'flat and colourless', 'utterly devoid of colour', 'the colour drained away', 'thoroughly desaturated'],
+        S: ['needed more saturation','a bit washed out',"could've been more vivid",'just a touch more colour needed','slightly too grey','barely undersaturated','a hint more vividness needed','fractionally too muted','colour fell just short','too close to grey'],
+        M: ['quite undersaturated','noticeably washed out','needed a lot more colour','clearly too muted','colour fell short','greyer than it needed','a fair bit too washed out','undershooting the vividness','a fair bit too grey','more muted than it should be'],
+        L: ['very undersaturated','drained of colour','almost greyscale','thoroughly dull','saturation nowhere to be found','nearly all the colour gone','flat and colourless','utterly devoid of colour','the colour drained away','thoroughly desaturated'],
       }[band(worst.delta)]);
     }
   }
 
-  // ── Hue — non-directional, single pool ──
+  // Hue — bucketed by delta, directional names in tight/medium bands
+  if (dH < 20) {
+    const name = hueName(tH);
+    return pick([
+      `should've been more ${name}`,
+      `target was more ${name}`,
+      `needed to lean ${name}`,
+      `a touch away from ${name}`,
+      `closer to ${name} than that`,
+      `was sitting in ${name}`,
+      `more ${name} than you gave it`,
+      `the ${name} was there, just missed`,
+      `just short of ${name}`,
+      `needed that ${name} push`,
+    ]);
+  }
+  if (dH < 40) {
+    const name = hueName(gH);
+    return pick([
+      `leaning too ${name}`,
+      `drifted into ${name}`,
+      `pulled toward ${name}`,
+      `ended up too ${name}`,
+      `hue slipped toward ${name}`,
+      `sat too far into ${name}`,
+      `went ${name} when it shouldn't`,
+      `the ${name} crept in`,
+      `too much ${name} in there`,
+      `hue landed in ${name} territory`,
+    ]);
+  }
   return pick([
     'hue was the giveaway',
     'colour angle drifted',
-    'hue pulled it off',
+    'hue had other ideas',
     'the angle was off',
+    'colour family was wrong',
     'not quite the right colour',
     'hue slipped away',
-    'close but the hue betrayed you',
-    'colour family was wrong',
-    'hue had other ideas',
     'the tone was adrift',
+    'wrong end of the spectrum',
+    'close but the hue betrayed you',
   ]);
 }
 
@@ -1725,6 +1844,7 @@ function freshSeedToInput() {
 
 function goHome() {
   previousSeedScore = null;
+  dailyScoreSubmitted = false;
   freshSeedToInput();
   showScreen('home');
 }
@@ -1995,6 +2115,17 @@ function startRound() {
   // ── Arc pre-countdown (650 ms per phase — arc fills continuously while 3→2→1) ──
   const arcOverlay = document.getElementById('arc-overlay');
   const meta = document.getElementById('stage-meta');
+
+  if (flashTimer) clearTimeout(flashTimer);
+
+  // Skip arc if disabled in options — go straight to colour flash
+  if (!arcEnabled) {
+    arcOverlay.style.display = 'none';
+    meta.style.display = '';
+    flashColour(c);
+    return;
+  }
+
   arcOverlay.style.display = 'flex';
   meta.style.display = 'none';
 
@@ -2006,8 +2137,6 @@ function startRound() {
   arcNum.textContent = preCount;
   arcTrack.style.transition = 'none';
   arcTrack.style.strokeDashoffset = '0';   // start empty
-
-  if (flashTimer) clearTimeout(flashTimer);
 
   // Phase 1: show 3 + immediately start filling to 1/3
   flashTimer = setTimeout(() => {
@@ -2112,44 +2241,76 @@ function beginGuess() {
   }, 1000);
 }
 
+// Current hue value — kept as a plain number, not tied to a native input
+let hueVal = 180;
+
 function setSliderVal(axis, val) {
-  document.getElementById('sl-' + axis).value = val;
-  updateSlider(axis);
+  if (axis === 'h') {
+    hueVal = ((val % 360) + 360) % 360;
+    updateSlider('h');
+  } else {
+    document.getElementById('sl-' + axis).value = val;
+    updateSlider(axis);
+  }
 }
 
 function updateSlider(axis) {
+  if (axis === 'h') {
+    // Drum model — tape shifts, thumb stays centred
+    document.getElementById('val-h').textContent = pad3(Math.round(hueVal)) + '°';
+    updateHueTape();
+    refreshPreview();
+    updateSliderGradients();
+    return;
+  }
   const input = document.getElementById('sl-' + axis);
   const val = +input.value;
   const max = +input.max;
   const pct = (val / max) * 100;
-
   document.getElementById('thumb-' + axis).style.left = pct + '%';
-
-  if (axis === 'h') document.getElementById('val-h').textContent = pad3(val) + '°';
   if (axis === 's') document.getElementById('val-s').textContent = parseFloat(val).toFixed(1) + '%';
   if (axis === 'l') document.getElementById('val-l').textContent = parseFloat(val).toFixed(1) + '%';
-
   refreshPreview();
   updateSliderGradients();
 }
 
+function updateHueTape() {
+  const tape = document.getElementById('hue-tape');
+  if (!tape) return;
+
+  // Always render the full 360-degree spectrum edge to edge.
+  // The gradient starts at (hueVal + 180) on the left and ends at
+  // (hueVal + 180) on the right, so hueVal sits exactly at the centre.
+  // This is a flat wheel — the whole spectrum is always visible,
+  // dragging just rotates it.
+  const steps = 36;
+  const stops = [];
+  for (let i = 0; i <= steps; i++) {
+    const pct = (i / steps) * 100;
+    const h = ((hueVal + 180 + (i / steps) * 360) % 360);
+    stops.push(`hsl(${h.toFixed(1)},100%,50%) ${pct.toFixed(1)}%`);
+  }
+  tape.style.background = `linear-gradient(to right, ${stops.join(',')})`;
+  tape.style.backgroundSize = '';
+  tape.style.backgroundPosition = '';
+  tape.style.backgroundRepeat = '';
+}
+
 function updateSliderGradients() {
   if (!isGuessing) return;
-  const h = +document.getElementById('sl-h').value;
+  const h = hueVal;
   const s = +document.getElementById('sl-s').value;
   const b = +document.getElementById('sl-l').value;
 
-  // Hue: always pure spectrum — stays readable regardless of S/B
-  const hueStops = [];
-  for (let i = 0; i <= 360; i += 30) hueStops.push(`hsl(${i},100%,50%)`);
-  document.getElementById('track-h').style.background = `linear-gradient(to right, ${hueStops.join(',')})`;
+  // Hue tape is handled by updateHueTape()
+  updateHueTape();
 
-  // Saturation: grey → vivid at current hue and brightness (via HSB→HSL)
+  // Saturation: grey → vivid at current hue and brightness
   const satStops = [];
   for (let sv = 0; sv <= 100; sv += 20) satStops.push(hsl(h, sv, b));
   document.getElementById('track-s').style.background = `linear-gradient(to right, ${satStops.join(',')})`;
 
-  // Brightness: black → full brightness at current hue/sat (via HSB→HSL)
+  // Brightness: black → full brightness at current hue/sat
   const briStops = [];
   for (let bv = 0; bv <= 100; bv += 20) briStops.push(hsl(h, s, bv));
   document.getElementById('track-l').style.background = `linear-gradient(to right, ${briStops.join(',')})`;
@@ -2157,12 +2318,47 @@ function updateSliderGradients() {
 
 function refreshPreview() {
   if (!isGuessing) return;
-  const h = +document.getElementById('sl-h').value;
+  const h = hueVal;
   const s = +document.getElementById('sl-s').value;
   const l = +document.getElementById('sl-l').value;
-  const colour = hsl(h, s, l);
-  document.getElementById('stage-colour').style.background = colour;
+  document.getElementById('stage-colour').style.background = hsl(h, s, l);
 }
+
+// ── HUE DRUM DRAG (mouse + touch) ──
+(function() {
+  const track = document.getElementById('track-h');
+  if (!track) return;
+
+  // px of drag = 1° of hue — feels natural
+  const DEG_PER_PX = 0.5;
+  let dragging = false;
+  let startX = 0;
+  let startHue = 180;
+
+  function onStart(x) {
+    if (!isGuessing) return;
+    dragging = true;
+    startX   = x;
+    startHue = hueVal;
+  }
+  function onMove(x) {
+    if (!dragging) return;
+    const dx = x - startX;
+    hueVal = (((startHue - dx * DEG_PER_PX) % 360) + 360) % 360;
+    updateSlider('h');
+  }
+  function onEnd() { dragging = false; }
+
+  // Mouse
+  track.addEventListener('mousedown',  e => { onStart(e.clientX); e.preventDefault(); });
+  window.addEventListener('mousemove', e => { if (dragging) onMove(e.clientX); });
+  window.addEventListener('mouseup',   onEnd);
+
+  // Touch
+  track.addEventListener('touchstart', e => { onStart(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
+  track.addEventListener('touchmove',  e => { onMove(e.touches[0].clientX); e.preventDefault(); },  { passive: false });
+  track.addEventListener('touchend',   onEnd);
+})();
 
 function countUp(el, from, to, duration, onDone) {
   const start = performance.now();
@@ -2185,7 +2381,7 @@ function lockGuess() {
 
   document.getElementById('stage-colour').style.background = 'var(--bg2)';
 
-  const gh = +document.getElementById('sl-h').value;
+  const gh = Math.round(hueVal);
   const gs = +document.getElementById('sl-s').value;
   const gb = +document.getElementById('sl-l').value;
   const tc = colours[round - 1];
@@ -2258,7 +2454,10 @@ nextBtn.onclick = nextRound;   // safety re-attach
   // Count-up + final population
   countUp(document.getElementById('res-score'), 0, tot, 800, () => {
     const gradeQuip = grade(tot);
-    const tip = perceptualTip(labT, labG, gh, gs, gb, tc.h, tc.s, tc.b, de);
+    const cct = closeCallTip(de);
+    const tip = cct || perceptualTip(labT, labG, gh, gs, gb, tc.h, tc.s, tc.b, de);
+    // Perplexed achievement fires on the ΔE₀₀ threshold regardless of tips setting
+    if (de > 35 && typeof unlockAchievement === 'function') unlockAchievement('perplexed');
     document.getElementById('res-grade').innerHTML = tip
       ? `${gradeQuip}<br><span style="color:var(--dim)">${tip}</span>`
       : gradeQuip;
@@ -2276,7 +2475,7 @@ nextBtn.onclick = nextRound;   // safety re-attach
     if (existing) existing.remove();
 
     document.getElementById('res-score').insertAdjacentHTML('afterend',
-      `<div id="res-deltae" style="font-size:9px;letter-spacing:.12em;color:var(--dim);margin-top:6px">ΔE₀₀ = ${de.toFixed(2)}</div>`);
+      `<div id="res-deltae" style="font-size:9px;letter-spacing:.12em;color:var(--dim);margin-top:6px;display:${deltaEEnabled ? '' : 'none'}">ΔE₀₀ = ${de.toFixed(2)}</div>`);
   });
 }
 
@@ -2517,14 +2716,11 @@ updateSlider('s');
 updateSlider('l');
 freshSeedToInput();
 
-// ── MOBILE SWIPE ZONES ──
-// On touch devices, make the entire slider-row a swipe target
-// so users don't need to land on the tiny thumb
+// ── MOBILE SWIPE ZONES (S and B only — H has its own drum handler) ──
 (function() {
   if (!('ontouchstart' in window)) return;
 
   const axes = [
-    { axis: 'h', min: 0, max: 360, step: 1 },
     { axis: 's', min: 0, max: 100, step: 0.5 },
     { axis: 'l', min: 0, max: 100, step: 0.5 },
   ];
@@ -2535,7 +2731,6 @@ freshSeedToInput();
     let startX = null;
     let startVal = null;
 
-    // Sensitivity: full swipe across screen (~360px) = full range
     const sensitivity = (max - min) / 280;
 
     row.addEventListener('touchstart', e => {
@@ -2672,6 +2867,101 @@ freshSeedToInput();
 </div>
   </div>
 </div>
+
+<!-- STATS + ACHIEVEMENTS MODAL -->
+<div id="stats-modal" class="modal-overlay" role="dialog" aria-label="Stats and Achievements" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg2);border:0.5px solid var(--line2);border-radius:12px;max-width:480px;width:100%;max-height:85vh;display:flex;flex-direction:column">
+    <div style="padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div style="display:flex;gap:0;border:0.5px solid var(--line2);border-radius:3px;overflow:hidden">
+        <button id="stats-tab-stats" onclick="switchStatsTab('stats')" style="padding:6px 14px;background:var(--white);border:none;color:var(--bg);font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer">Stats</button>
+        <button id="stats-tab-ach" onclick="switchStatsTab('ach')" style="padding:6px 14px;background:transparent;border:none;color:var(--mute);font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer">Achievements</button>
+      </div>
+      <button id="stats-modal-close" style="background:transparent;border:none;color:var(--dim);font-size:18px;cursor:pointer;line-height:1;font-family:var(--mono)">×</button>
+    </div>
+    <div id="stats-body" style="overflow-y:auto;padding:16px 20px 20px;flex:1"></div>
+  </div>
+</div>
+
+<!-- OPTIONS MODAL -->
+<div id="options-modal" class="modal-overlay" role="dialog" aria-label="Options" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:100;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeOptionsModal()">
+  <div style="background:var(--bg2);border:0.5px solid var(--line2);border-radius:12px;max-width:480px;width:100%;max-height:85vh;overflow-y:auto;padding:28px 24px;position:relative">
+    <button onclick="closeOptionsModal()" style="position:absolute;top:14px;right:14px;background:transparent;border:none;color:var(--dim);font-size:18px;cursor:pointer;line-height:1;font-family:var(--mono)">×</button>
+    <div style="font-size:11px;letter-spacing:.22em;color:var(--dim);text-transform:uppercase;margin-bottom:20px">Options</div>
+
+    <!-- Colourblind simulation -->
+    <div style="font-size:9px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;margin-bottom:10px">Colourblind Simulation</div>
+    <div style="display:flex;gap:5px;margin-bottom:6px">
+      <button class="opt-cb-btn" data-cb="none"    onclick="setCBMode('none',this)"    style="flex:1;padding:9px 4px;background:transparent;border:0.5px solid var(--line2);color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:3px;transition:all .15s">Off</button>
+      <button class="opt-cb-btn" data-cb="deutan"  onclick="setCBMode('deutan',this)"  style="flex:1;padding:9px 4px;background:transparent;border:0.5px solid var(--line2);color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:3px;transition:all .15s">Deutan</button>
+      <button class="opt-cb-btn" data-cb="protan"  onclick="setCBMode('protan',this)"  style="flex:1;padding:9px 4px;background:transparent;border:0.5px solid var(--line2);color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:3px;transition:all .15s">Protan</button>
+      <button class="opt-cb-btn" data-cb="tritan"  onclick="setCBMode('tritan',this)"  style="flex:1;padding:9px 4px;background:transparent;border:0.5px solid var(--line2);color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:3px;transition:all .15s">Tritan</button>
+    </div>
+    <div style="font-size:9px;color:var(--dim);letter-spacing:.04em;line-height:1.6;margin-bottom:24px">Simulates how the colour swatches appear to people with each type of colour vision deficiency. This is an educational tool — it shows what they see, it does not help them play.</div>
+
+    <div style="height:0.5px;background:var(--line);margin-bottom:20px"></div>
+
+    <!-- Colour space display -->
+    <div style="font-size:9px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;margin-bottom:10px">Result Values Display</div>
+    <div style="display:flex;gap:5px;margin-bottom:6px">
+      <button class="opt-cs-btn" data-cs="hsb" onclick="setColourSpace('hsb',this)" style="flex:1;padding:9px 4px;background:transparent;border:0.5px solid var(--line2);color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:3px;transition:all .15s">HSB</button>
+      <button class="opt-cs-btn" data-cs="hsl" onclick="setColourSpace('hsl',this)" style="flex:1;padding:9px 4px;background:transparent;border:0.5px solid var(--line2);color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:3px;transition:all .15s">HSL</button>
+      <button class="opt-cs-btn" data-cs="hex" onclick="setColourSpace('hex',this)" style="flex:1;padding:9px 4px;background:transparent;border:0.5px solid var(--line2);color:var(--mute);font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:3px;transition:all .15s">HEX</button>
+    </div>
+    <div style="font-size:9px;color:var(--dim);letter-spacing:.04em;line-height:1.6;margin-bottom:24px">Controls how colour values are shown on the result screen.</div>
+
+    <div style="height:0.5px;background:var(--line);margin-bottom:20px"></div>
+
+    <!-- Tips toggle -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div style="font-size:9px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;margin-bottom:3px">Perceptual Tips</div>
+        <div style="font-size:9px;color:var(--dim);letter-spacing:.04em;line-height:1.5">"a bit too dark" — shown after locking a guess</div>
+      </div>
+      <button id="tips-toggle" onclick="toggleTips()" style="width:42px;height:24px;border-radius:12px;border:0.5px solid var(--line2);background:var(--bg3);cursor:pointer;position:relative;flex-shrink:0;transition:background .2s">
+        <span id="tips-knob" style="position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--mute);transition:all .2s"></span>
+      </button>
+    </div>
+
+    <!-- Arc countdown toggle -->
+    <div style="height:0.5px;background:var(--line);margin-bottom:16px"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div style="font-size:9px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;margin-bottom:3px">Round Countdown</div>
+        <div style="font-size:9px;color:var(--dim);letter-spacing:.04em;line-height:1.5">3 2 1 arc animation before each colour flash</div>
+      </div>
+      <button id="arc-toggle" onclick="toggleArc()" style="width:42px;height:24px;border-radius:12px;border:0.5px solid var(--line2);background:var(--bg3);cursor:pointer;position:relative;flex-shrink:0;transition:background .2s">
+        <span id="arc-knob" style="position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--mute);transition:all .2s"></span>
+      </button>
+    </div>
+
+    <!-- ΔE₀₀ toggle -->
+    <div style="height:0.5px;background:var(--line);margin-bottom:16px"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div>
+        <div style="font-size:9px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase;margin-bottom:3px">Show ΔE₀₀</div>
+        <div style="font-size:9px;color:var(--dim);letter-spacing:.04em;line-height:1.5">Raw perceptual difference score on result screen</div>
+      </div>
+      <button id="deltae-toggle" onclick="toggleDeltaE()" style="width:42px;height:24px;border-radius:12px;border:0.5px solid var(--line2);background:var(--bg3);cursor:pointer;position:relative;flex-shrink:0;transition:background .2s">
+        <span id="deltae-knob" style="position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--mute);transition:all .2s"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- SVG FILTERS FOR COLOURBLIND MODES (hidden) -->
+<svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+  <defs>
+    <filter id="cb-deutan">
+      <feColorMatrix type="matrix" values="0.367 0.861 -0.228 0 0  0.280 0.673  0.047 0 0  -0.012 0.043  0.969 0 0  0 0 0 1 0"/>
+    </filter>
+    <filter id="cb-protan">
+      <feColorMatrix type="matrix" values="0.152 1.053 -0.205 0 0  0.115 0.786  0.099 0 0  -0.004 -0.048 1.052 0 0  0 0 0 1 0"/>
+    </filter>
+    <filter id="cb-tritan">
+      <feColorMatrix type="matrix" values="1.256 -0.077 -0.179 0 0  -0.078  0.931  0.148 0 0  0.005  0.691  0.304 0 0  0 0 0 1 0"/>
+    </filter>
+  </defs>
+</svg>
 
 <!-- DAILY LEADERBOARD MODAL -->
 <div id="daily-leaderboard-modal" class="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:120;align-items:center;justify-content:center;padding:20px">
@@ -2811,6 +3101,426 @@ function _showBackToast(msg) {
 window.history.replaceState({ base: true }, '');
 ensureSentinel();
 refreshDailyBtn();
+
+// ── OPTIONS STATE ──
+let cbMode      = localStorage.getItem('chromemory_cb')   || 'none';
+let colourSpace = localStorage.getItem('chromemory_cs')   || 'hsb';
+let tipsEnabled   = localStorage.getItem('chromemory_tips')   !== 'off';
+let arcEnabled    = localStorage.getItem('chromemory_arc')    !== 'off';
+let deltaEEnabled = localStorage.getItem('chromemory_deltae') !== 'off';
+
+function applyOptions() {
+  // Colourblind filter — applied to all colour swatches via a class on body
+  document.body.dataset.cb = cbMode;
+  // Inject/update a style tag for the filter rule
+  let st = document.getElementById('cb-style');
+  if (!st) { st = document.createElement('style'); st.id = 'cb-style'; document.head.appendChild(st); }
+  const filterMap = { none: 'none', deutan: 'url(#cb-deutan)', protan: 'url(#cb-protan)', tritan: 'url(#cb-tritan)' };
+  st.textContent = cbMode === 'none' ? '' :
+    `.stage-colour, .result-target-bg, .result-guess-bg, .end-swatch-target, .end-swatch-guess { filter: ${filterMap[cbMode]}; }`;
+
+  // Sync option button states
+  document.querySelectorAll('.opt-cb-btn').forEach(b => {
+    const on = b.dataset.cb === cbMode;
+    b.style.background   = on ? 'var(--white)' : 'transparent';
+    b.style.color        = on ? 'var(--bg)'    : 'var(--mute)';
+    b.style.borderColor  = on ? 'var(--white)' : 'var(--line2)';
+  });
+  document.querySelectorAll('.opt-cs-btn').forEach(b => {
+    const on = b.dataset.cs === colourSpace;
+    b.style.background   = on ? 'var(--white)' : 'transparent';
+    b.style.color        = on ? 'var(--bg)'    : 'var(--mute)';
+    b.style.borderColor  = on ? 'var(--white)' : 'var(--line2)';
+  });
+
+  // Tips toggle knob
+  const knob   = document.getElementById('tips-knob');
+  const toggle = document.getElementById('tips-toggle');
+  if (knob && toggle) {
+    toggle.style.background = tipsEnabled ? 'var(--white)' : 'var(--bg3)';
+    knob.style.left         = tipsEnabled ? '22px' : '3px';
+    knob.style.background   = tipsEnabled ? 'var(--bg)' : 'var(--mute)';
+  }
+
+  // Arc countdown knob
+  const arcKnob   = document.getElementById('arc-knob');
+  const arcToggle = document.getElementById('arc-toggle');
+  if (arcKnob && arcToggle) {
+    arcToggle.style.background = arcEnabled ? 'var(--white)' : 'var(--bg3)';
+    arcKnob.style.left         = arcEnabled ? '22px' : '3px';
+    arcKnob.style.background   = arcEnabled ? 'var(--bg)' : 'var(--mute)';
+  }
+
+  // ΔE₀₀ knob
+  const deKnob   = document.getElementById('deltae-knob');
+  const deToggle = document.getElementById('deltae-toggle');
+  if (deKnob && deToggle) {
+    deToggle.style.background = deltaEEnabled ? 'var(--white)' : 'var(--bg3)';
+    deKnob.style.left         = deltaEEnabled ? '22px' : '3px';
+    deKnob.style.background   = deltaEEnabled ? 'var(--bg)' : 'var(--mute)';
+  }
+}
+
+function setCBMode(mode, btn) {
+  cbMode = mode;
+  localStorage.setItem('chromemory_cb', cbMode);
+  applyOptions();
+}
+function setColourSpace(cs, btn) {
+  colourSpace = cs;
+  localStorage.setItem('chromemory_cs', colourSpace);
+  applyOptions();
+}
+function toggleTips() {
+  tipsEnabled = !tipsEnabled;
+  localStorage.setItem('chromemory_tips', tipsEnabled ? 'on' : 'off');
+  applyOptions();
+}
+function toggleArc() {
+  arcEnabled = !arcEnabled;
+  localStorage.setItem('chromemory_arc', arcEnabled ? 'on' : 'off');
+  applyOptions();
+}
+function toggleDeltaE() {
+  deltaEEnabled = !deltaEEnabled;
+  localStorage.setItem('chromemory_deltae', deltaEEnabled ? 'on' : 'off');
+  applyOptions();
+  // Hide/show any existing ΔE₀₀ line on the result screen immediately
+  const el = document.getElementById('res-deltae');
+  if (el) el.style.display = deltaEEnabled ? '' : 'none';
+}
+
+function openOptionsModal() {
+  applyOptions();
+  document.getElementById('options-modal').style.display = 'flex';
+  navStack.push({ type: 'modal', id: 'options-modal' });
+  ensureSentinel();
+}
+function closeOptionsModal() {
+  _closeModal('options-modal');
+}
+document.getElementById('options-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeOptionsModal();
+});
+
+// Patch tip rendering to respect tipsEnabled
+const _origCloseCallTip     = closeCallTip;
+const _origPerceptualTip    = perceptualTip;
+closeCallTip  = (de)                               => tipsEnabled ? _origCloseCallTip(de)                               : null;
+perceptualTip = (lt, lg, gH, gS, gB, tH, tS, tB, de) => tipsEnabled ? _origPerceptualTip(lt, lg, gH, gS, gB, tH, tS, tB, de) : null;
+
+// Patch result vals display to respect colourSpace
+const _origLockGuess = lockGuess;
+
+// Colour space formatting helpers
+function hsbToHex(h, s, b) {
+  const c = hsbToHsl(h, s, b);
+  const sl = c.s / 100, l = c.l / 100;
+  const a = sl * Math.min(l, 1 - l);
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const col = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(255 * col).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+function formatColourVals(h, s, b) {
+  if (colourSpace === 'hex') {
+    return hsbToHex(h, s, b).toUpperCase();
+  }
+  if (colourSpace === 'hsl') {
+    const c = hsbToHsl(h, s, b);
+    return `<span style="opacity:.45">H</span> ${pad3(Math.round(c.h))}°<br>`
+         + `<span style="opacity:.45">S</span> ${c.s.toFixed(1)}%<br>`
+         + `<span style="opacity:.45">L</span> ${c.l.toFixed(1)}%`;
+  }
+  // HSB (default)
+  return `<span style="opacity:.45">H</span> ${pad3(h)}°<br>`
+       + `<span style="opacity:.45">S</span> ${s.toFixed(1)}%<br>`
+       + `<span style="opacity:.45">B</span> ${b.toFixed(1)}%`;
+}
+
+// Override result vals after lockGuess populates them
+const _patchResultVals = function() {
+  const tc = colours[round - 1];
+  const gh = Math.round(hueVal);
+  const gs = +document.getElementById('sl-s').value;
+  const gb = +document.getElementById('sl-l').value;
+
+  // Rewrite values in chosen colour space
+  document.getElementById('res-target-vals').innerHTML = formatColourVals(tc.h, tc.s, tc.b);
+  document.getElementById('res-guess-vals').innerHTML  = formatColourVals(gh, gs, gb);
+
+  // Re-apply label colours — innerHTML rewrite wipes the inline style set in lockGuess
+  const tc_cols = labelColours(tc.h, tc.s, tc.b);
+  const gc_cols = labelColours(gh, gs, gb);
+  document.getElementById('res-target-vals').style.color = tc_cols.val;
+  document.getElementById('res-guess-vals').style.color  = gc_cols.val;
+  const tLabel = document.getElementById('res-target-vals').parentElement;
+  const gLabel = document.getElementById('res-guess-vals').parentElement;
+  const tSpan  = tLabel.querySelector('span');
+  const gSpan  = gLabel.querySelector('span');
+  if (tSpan) tSpan.style.color = tc_cols.label;
+  if (gSpan) gSpan.style.color = gc_cols.label;
+};
+
+// Hook into showScreen to patch vals whenever result screen shows
+const _origShowScreen2 = showScreen;
+showScreen = function(id) {
+  _origShowScreen2(id);
+  if (id === 'result') setTimeout(_patchResultVals, 0);
+};
+
+// ── ACHIEVEMENTS ──
+const ACHIEVEMENTS = [
+  { id: 'first_game',   label: 'First Steps',      desc: 'Complete any game',                         secret: false },
+  { id: 'perfect_round',label: 'Uncanny',           desc: 'Score 97+ on a single round',               secret: false },
+  { id: 'perfect_game', label: 'Flawless',          desc: 'Average 95+ across all 5 rounds',           secret: false },
+  { id: 'daily_first',  label: 'Creature of Habit', desc: 'Complete your first daily challenge',       secret: false },
+  { id: 'streak_3',     label: 'Consistent',        desc: '3-day daily streak',                        secret: false },
+  { id: 'streak_7',     label: 'Dedicated',         desc: '7-day daily streak',                        secret: false },
+  { id: 'streak_30',    label: 'Obsessed',          desc: '30-day daily streak',                       secret: false },
+  { id: 'hue_ace',      label: 'True Tone',         desc: 'Score 99+ on hue axis in a round',          secret: false },
+  { id: 'light_ace',    label: 'Photon',            desc: 'Score 99+ on lightness in a round',         secret: false },
+  { id: 'chroma_ace',   label: 'Vivid',             desc: 'Score 99+ on chroma in a round',            secret: false },
+  { id: 'comeback',     label: 'Redemption',        desc: 'Replay a seed and beat your previous score',secret: false },
+  { id: 'hard_first',   label: 'No Easy Way',       desc: 'Complete a game on hard',                   secret: false },
+  { id: 'all_diff',     label: 'Full Spectrum',     desc: 'Complete a game on all three difficulties', secret: false },
+  { id: 'perplexed',    label: 'Colour Blind?',     desc: '???',                                       secret: true  },
+  { id: 'century',      label: 'Century',           desc: 'Play 100 games',                            secret: false },
+];
+
+function loadAchievements() {
+  try { return JSON.parse(localStorage.getItem('chromemory_achievements') || '{}'); } catch(e) { return {}; }
+}
+function saveAchievements(a) {
+  try { localStorage.setItem('chromemory_achievements', JSON.stringify(a)); } catch(e) {}
+}
+
+function unlockAchievement(id) {
+  const all = loadAchievements();
+  if (all[id]) return; // already unlocked
+  all[id] = { unlocked: true, date: new Date().toISOString() };
+  saveAchievements(all);
+  const def = ACHIEVEMENTS.find(a => a.id === id);
+  if (def) showAchievementToast(def.label);
+}
+
+function showAchievementToast(label) {
+  let t = document.getElementById('ach-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'ach-toast';
+    t.style.cssText = 'position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 60px);left:50%;transform:translateX(-50%) translateY(12px);background:var(--bg4);border:0.5px solid #7ec8a0;color:var(--bright);font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:9px 16px;border-radius:4px;z-index:9999;opacity:0;transition:opacity .25s,transform .25s;white-space:nowrap;pointer-events:none;display:flex;align-items:center;gap:8px';
+    document.body.appendChild(t);
+  }
+  t.innerHTML = `<span style="color:#7ec8a0;font-size:11px">★</span> ${label.toUpperCase()} UNLOCKED`;
+  requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'translateX(-50%) translateY(0)'; });
+  clearTimeout(t._t);
+  t._t = setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateX(-50%) translateY(12px)'; }, 3200);
+}
+
+function checkAchievements(avg, roundHistory) {
+  const h = loadHistory();
+  const ach = loadAchievements();
+
+  unlockAchievement('first_game');
+
+  if (avg >= 95) unlockAchievement('perfect_game');
+  if (diff === 'hard') unlockAchievement('hard_first');
+  if (isDailyMode) unlockAchievement('daily_first');
+
+  // Per-round checks
+  roundHistory.forEach(r => {
+    if (r.tot >= 97)  unlockAchievement('perfect_round');
+    if (r.sh  >= 99)  unlockAchievement('hue_ace');
+    if (r.sb  >= 99)  unlockAchievement('light_ace');
+    if (r.ss  >= 99)  unlockAchievement('chroma_ace');
+  });
+
+  // All difficulties
+  const diffs = new Set(h.map(e => e.diff));
+  if (diffs.has('easy') && diffs.has('medium') && diffs.has('hard')) unlockAchievement('all_diff');
+
+  // Century
+  if (h.length >= 100) unlockAchievement('century');
+
+  // Comeback — previousSeedScore is set before replaySeed()
+  if (previousSeedScore !== null && avg > previousSeedScore) unlockAchievement('comeback');
+
+  // Streak
+  const streak = getDailyStreak(h);
+  if (streak >= 3)  unlockAchievement('streak_3');
+  if (streak >= 7)  unlockAchievement('streak_7');
+  if (streak >= 30) unlockAchievement('streak_30');
+}
+
+// Hook achievement checks into showEnd
+const _origShowEnd = showEnd;
+showEnd = function() {
+  _origShowEnd();
+  checkAchievements(scores.reduce((a,b) => a+b,0) / scores.length, history);
+};
+
+// ── STATS HELPERS ──
+function getDailyStreak(h) {
+  // Identify daily games by checking if the seed matches the expected daily seed for that date
+  const allDailyDates = [...new Set(
+    h.filter(e => {
+      if (!e.date) return false;
+      const d = new Date(e.date);
+      const key = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+      const n  = parseInt(key) % 9000 + 1000;
+      const wi = parseInt(key) % WORDS.length;
+      return e.seed === WORDS[wi] + '-' + String(n).padStart(4,'0');
+    }).map(e => e.date.slice(0,10))
+  )].sort().reverse();
+
+  if (!allDailyDates.length) return 0;
+  let streak = 1;
+  for (let i = 1; i < allDailyDates.length; i++) {
+    const prev   = new Date(allDailyDates[i-1]);
+    const curr   = new Date(allDailyDates[i]);
+    const dayGap = (prev - curr) / 86400000;
+    if (Math.round(dayGap) === 1) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function getAxisWeakness(h) {
+  if (!h.length) return null;
+  let lossH = 0, lossC = 0, lossL = 0, count = 0;
+  h.forEach(e => {
+    if (!e.rounds) return;
+    e.rounds.forEach(r => {
+      lossH += (100 - r.sh);
+      lossC += (100 - r.ss);
+      lossL += (100 - r.sb);
+      count++;
+    });
+  });
+  if (!count) return null;
+  const worst = Math.max(lossH, lossC, lossL);
+  if (worst === lossH) return 'Hue';
+  if (worst === lossC) return 'Chroma';
+  return 'Lightness';
+}
+
+// ── STATS MODAL ──
+let statsTab = 'stats';
+
+function switchStatsTab(tab) {
+  statsTab = tab;
+  document.getElementById('stats-tab-stats').style.background = tab === 'stats' ? 'var(--white)' : 'transparent';
+  document.getElementById('stats-tab-stats').style.color      = tab === 'stats' ? 'var(--bg)'    : 'var(--mute)';
+  document.getElementById('stats-tab-ach').style.background   = tab === 'ach'   ? 'var(--white)' : 'transparent';
+  document.getElementById('stats-tab-ach').style.color        = tab === 'ach'   ? 'var(--bg)'    : 'var(--mute)';
+  renderStatsBody();
+}
+
+function renderStatsBody() {
+  const body = document.getElementById('stats-body');
+  if (statsTab === 'stats') {
+    body.innerHTML = buildStatsHTML();
+  } else {
+    body.innerHTML = buildAchHTML();
+  }
+}
+
+function buildStatsHTML() {
+  const h = loadHistory();
+  if (!h.length) return `<div style="font-size:11px;color:var(--dim);text-align:center;padding:32px 0">No games yet.</div>`;
+
+  const total  = h.length;
+  const avg    = h.reduce((a,e) => a + e.score, 0) / total;
+  const best   = h.reduce((b,e) => e.score > b.score ? e : b, h[0]);
+  const bestRound = h.flatMap(e => e.rounds || []).reduce((b,r) => r.tot > b ? r.tot : b, 0);
+  const streak = getDailyStreak(h);
+  const weakness = getAxisWeakness(h);
+
+  const byDiff = { easy: [], medium: [], hard: [] };
+  h.forEach(e => { if (byDiff[e.diff]) byDiff[e.diff].push(e.score); });
+  const diffAvg = d => byDiff[d].length ? (byDiff[d].reduce((a,b)=>a+b,0)/byDiff[d].length).toFixed(2) : '—';
+
+  const last10 = h.slice(0,10).map(e => e.score);
+  const sparkMax = Math.max(...last10, 1);
+
+  const row = (label, val) => `
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;border-bottom:0.5px solid var(--line)">
+      <div style="font-size:9px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase">${label}</div>
+      <div style="font-size:14px;color:var(--bright);letter-spacing:-.01em">${val}</div>
+    </div>`;
+
+  const spark = last10.map(v => {
+    const h2 = Math.max(4, (v / sparkMax) * 32);
+    return `<div style="flex:1;background:var(--line2);border-radius:2px;height:${h2.toFixed(0)}px;align-self:flex-end;position:relative">
+      <div style="position:absolute;inset:0;background:var(--sub);border-radius:2px;opacity:${(v/100).toFixed(2)}"></div>
+    </div>`;
+  }).join('');
+
+  return `
+    ${row('Total Games', total)}
+    ${row('All-time Average', avg.toFixed(2))}
+    ${row('Best Game', `${best.score.toFixed(2)} <span style="font-size:9px;color:var(--dim);letter-spacing:.06em">${best.seed}</span>`)}
+    ${row('Best Single Round', bestRound.toFixed(2))}
+    ${row('Daily Streak', streak + (streak === 1 ? ' day' : ' days'))}
+    ${weakness ? row('Weakest Axis', weakness) : ''}
+    <div style="height:0.5px;background:var(--line);margin:14px 0 10px"></div>
+    <div style="font-size:9px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;margin-bottom:8px">By Difficulty</div>
+    <div style="display:flex;gap:6px;margin-bottom:16px">
+      ${['easy','medium','hard'].map(d => `<div style="flex:1;background:var(--bg3);border:0.5px solid var(--line);border-radius:3px;padding:8px 6px;text-align:center">
+        <div style="font-size:8px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;margin-bottom:4px">${d}</div>
+        <div style="font-size:15px;color:var(--bright)">${diffAvg(d)}</div>
+        <div style="font-size:8px;color:var(--dim);margin-top:2px">${byDiff[d].length} game${byDiff[d].length !== 1 ? 's' : ''}</div>
+      </div>`).join('')}
+    </div>
+    ${last10.length > 1 ? `
+      <div style="font-size:9px;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;margin-bottom:8px">Last ${last10.length} Games</div>
+      <div style="display:flex;gap:3px;height:36px;align-items:flex-end">${spark}</div>
+    ` : ''}
+  `;
+}
+
+function buildAchHTML() {
+  const unlocked = loadAchievements();
+  const unlockedCount = Object.keys(unlocked).length;
+  return `
+    <div style="font-size:9px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;margin-bottom:14px">${unlockedCount} / ${ACHIEVEMENTS.length} unlocked</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${ACHIEVEMENTS.map(a => {
+        const done = !!unlocked[a.id];
+        const d = done ? new Date(unlocked[a.id].date) : null;
+        const dateStr = d ? d.toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '';
+        return `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--bg3);border:0.5px solid ${done ? 'var(--line2)' : 'var(--line)'};border-radius:4px;opacity:${done ? '1' : '0.45'}">
+          <div style="font-size:18px;line-height:1;flex-shrink:0">${done ? '★' : '☆'}</div>
+          <div style="flex:1">
+            <div style="font-size:11px;color:${done ? 'var(--bright)' : 'var(--sub)'};letter-spacing:.04em;margin-bottom:2px">${a.label}</div>
+            <div style="font-size:9px;color:var(--dim);letter-spacing:.04em">${a.secret && !done ? '???' : a.desc}</div>
+          </div>
+          ${done ? `<div style="font-size:8px;color:var(--dim);letter-spacing:.06em;flex-shrink:0">${dateStr}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+function openStatsModal() {
+  statsTab = 'stats';
+  switchStatsTab('stats');
+  document.getElementById('stats-modal').style.display = 'flex';
+  navStack.push({ type: 'modal', id: 'stats-modal' });
+  ensureSentinel();
+}
+
+document.getElementById('stats-modal-close').addEventListener('click', () => _closeModal('stats-modal'));
+document.getElementById('stats-modal').addEventListener('click', function(e) {
+  if (e.target === this) _closeModal('stats-modal');
+});
+
+// Apply options on load
+applyOptions();
 
 </script>
 
