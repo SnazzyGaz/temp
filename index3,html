@@ -445,6 +445,35 @@ html, body {
   border-radius: 5px;
   overflow: hidden;
 }
+/* Hue track uses drum model — overflow visible so tape can extend */
+#track-h {
+  overflow: visible;
+  cursor: ew-resize;
+}
+/* The scrolling tape behind the hue track */
+.hue-tape {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 5px;
+  pointer-events: none;
+  will-change: transform;
+}
+/* Centre pick-point notch on hue track */
+#track-h::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--white);
+  border-radius: 1px;
+  box-shadow: 0 0 4px rgba(0,0,0,0.5);
+  z-index: 3;
+  pointer-events: none;
+}
 .slider-fill {
   display: none;
 }
@@ -460,6 +489,10 @@ html, body {
   pointer-events: none;
   z-index: 1;
 }
+/* Hue thumb sits fixed at centre */
+#thumb-h {
+  left: 50% !important;
+}
 
 .slider-native {
   position: absolute;
@@ -471,6 +504,10 @@ html, body {
   transform: translateY(-50%);
   left: 0;
   z-index: 2;
+}
+/* No native input on hue — drag handled in JS */
+#sl-h {
+  display: none;
 }
 
 .slider-val {
@@ -878,6 +915,7 @@ html, body {
   .slider-axis { font-size: 12px; min-width: 12px; }
   .slider-val { font-size: 15px; min-width: 42px; }
   .slider-track { height: 22px; border-radius: 11px; }
+  #track-h::after { top: -4px; bottom: -4px; }
   .slider-thumb { width: 34px; height: 34px; border-width: 2px; }
   .slider-native { height: 52px; }
   /* ── RESULT ── */
@@ -1293,9 +1331,8 @@ c-173 87 -203 93 -494 103 -140 4 -275 11 -300 14 -65 9 -203 45 -214 55 -19
       <div class="slider-row">
         <span class="slider-axis">H</span>
         <div class="slider-track" id="track-h">
-          <div class="slider-fill" id="fill-h" style="width:50%"></div>
+          <div class="hue-tape" id="hue-tape"></div>
           <div class="slider-thumb" id="thumb-h" style="left:50%"></div>
-          <input class="slider-native" type="range" min="0" max="360" step="1" id="sl-h" value="180" oninput="updateSlider('h')" aria-label="Hue">
         </div>
         <span class="slider-val" id="val-h">180°</span>
       </div>
@@ -1550,15 +1587,75 @@ function grade(n) {
   return tier.msgs[Math.floor(Math.random() * tier.msgs.length)];
 }
 
+// ── HUE NAME LOOKUP ──
+function hueName(h) {
+  h = ((h % 360) + 360) % 360;
+  if (h < 15  || h >= 345) return 'red';
+  if (h < 40)  return 'orange';
+  if (h < 65)  return 'yellow';
+  if (h < 90)  return 'yellow-green';
+  if (h < 150) return 'green';
+  if (h < 175) return 'teal';
+  if (h < 200) return 'cyan';
+  if (h < 270) return 'blue';
+  if (h < 300) return 'purple';
+  if (h < 330) return 'magenta';
+  return 'pink';
+}
+
+// ── CLOSE CALL TIPS ──
+function closeCallTip(de) {
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+  if (de < 1.0) {
+    return pick([
+      'practically imperceptible',
+      'virtually identical',
+      'almost indistinguishable',
+      'the difference is academic',
+      "a human eye can't split that",
+      "that's essentially perfect",
+      'the delta is negligible',
+      'an instrument would struggle',
+      'colour memory at its finest',
+      "that's as close as it gets"
+    ]);
+  }
+  if (de < 2.5 && Math.random() < 0.60) {
+    return pick([
+      'barely a trace off',
+      'almost no difference there',
+      'nearly imperceptible',
+      "that's extremely close",
+      'only just distinguishable',
+      'a very fine miss',
+      'the gap is tiny',
+      'razor close',
+      'almost had it exactly',
+      'impressive recall'
+    ]);
+  }
+  if (de < 4.0 && Math.random() < 0.35) {
+    return pick([
+      'very close',
+      'nearly had it',
+      'a small miss',
+      'close but not quite',
+      'almost locked in',
+      'just shy of it',
+      'a fine margin',
+      'nearly there',
+      'just a touch off',
+      'good memory, fine miss'
+    ]);
+  }
+  return null;
+}
+
 // ── PERCEPTUAL TIP ──
-// Fires on the result screen only. Finds the worst axis delta, rolls
-// probability (25% at delta=5 → 100% at delta=10), then returns a
-// bucketed directional tip string or null. Perplexed tier fires at
-// raw ΔE₀₀ > 35 with 85% probability and overrides everything.
 function perceptualTip(labTarget, labGuess, gH, gS, gB, tH, tS, tB, de) {
   const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
-  // ── Perplexed tier — overrides axis tips ──
+  // Perplexed tier
   if (de > 35 && Math.random() < 0.85) {
     return pick([
       'come on now',
@@ -1593,64 +1690,88 @@ function perceptualTip(labTarget, labGuess, gH, gS, gB, tH, tS, tB, de) {
 
   if (worst.delta < THRESHOLD) return null;
 
-  // Probability roll — linear from BASE_PROB at THRESHOLD to 1.0 at FULL_PROB_AT
   const t = Math.min((worst.delta - THRESHOLD) / (FULL_PROB_AT - THRESHOLD), 1);
   const prob = BASE_PROB + (1 - BASE_PROB) * t;
   if (Math.random() > prob) return null;
 
-  // ── Band helper ──
   const band = d => d < 8 ? 'S' : d < 14 ? 'M' : 'L';
 
-  // ── Lightness ──
+  // Lightness
   if (worst.key === 'L') {
     if (gB > tB) {
-      // Too bright
       return pick({
-        S: ['a touch too bright', 'slightly too light', 'just a hair too bright', 'barely too light', 'fractionally too bright', 'landed too light', 'a whisper too bright', 'only just too bright', 'nudged it too bright', 'crept into the light'],
-        M: ['quite a bit too bright', 'noticeably too light', 'too much brightness', 'pushed the brightness too far', 'clearly too light', 'overshooting the brightness', 'brighter than it needed', 'brightness crept up', 'a fair bit too bright', 'light got away from you'],
-        L: ['way too bright', 'far too light', 'massively overlit', 'brightness through the roof', 'washed it right out', 'thoroughly overexposed', 'practically glowing', 'turned the lights up way too high', 'blinding', 'overlit by a mile'],
+        S: ['a touch too bright','slightly too light','just a hair too bright','barely too light','fractionally too bright','landed too light','a whisper too bright','only just too bright','nudged it too bright','crept into the light'],
+        M: ['quite a bit too bright','noticeably too light','too much brightness','pushed the brightness too far','clearly too light','overshooting the brightness','brighter than it needed','brightness crept up','a fair bit too bright','light got away from you'],
+        L: ['way too bright','far too light','massively overlit','brightness through the roof','washed it right out','thoroughly overexposed','practically glowing','turned the lights up way too high','blinding','overlit by a mile'],
       }[band(worst.delta)]);
     } else {
-      // Too dark
       return pick({
-        S: ['a bit too dark', 'pushed it too dark', 'just a shade too dark', 'slightly underlit', 'barely too dark', 'fractionally too dim', 'just a hair too dim', 'nudged it too dark', 'a touch too dim', 'landed too dark'],
-        M: ['quite a bit too dark', 'noticeably too dark', 'clearly too dim', 'undershooting the brightness', 'darker than it needed', 'brightness fell short', 'dimmed it too much', 'a fair bit too dark', 'dimmed beyond recognition', 'duller than it should be'],
-        L: ['way too dark', 'far too dim', 'lost in the shadows', 'nearly pitch black', 'dragged it into the dark', 'severely underlit', 'thoroughly underexposed', 'buried in shadow', 'deep in the dark', 'almost no brightness there'],
+        S: ['a bit too dark','pushed it too dark','just a shade too dark','slightly underlit','barely too dark','fractionally too dim','just a hair too dim','nudged it too dark','a touch too dim','landed too dark'],
+        M: ['quite a bit too dark','noticeably too dark','clearly too dim','undershooting the brightness','darker than it needed','brightness fell short','dimmed it too much','a fair bit too dark','dimmed beyond recognition','duller than it should be'],
+        L: ['way too dark','far too dim','lost in the shadows','nearly pitch black','dragged it into the dark','severely underlit','thoroughly underexposed','buried in shadow','deep in the dark','almost no brightness there'],
       }[band(worst.delta)]);
     }
   }
 
-  // ── Chroma ──
+  // Chroma
   if (worst.key === 'C') {
     if (gS > tS) {
-      // Too saturated
       return pick({
-        S: ['a touch too saturated', 'slightly too vivid', 'just a hair too punchy', 'barely too vivid', 'a hint too much colour', 'fractionally oversaturated', 'colour crept up slightly', 'a whisper too colourful', 'only just oversaturated', 'nudged the vividness too far'],
-        M: ['quite oversaturated', 'noticeably too vivid', 'too much colour in there', 'clearly too saturated', 'vividness got away from you', 'colour pushed a bit far', 'punched the colour too hard', 'a fair bit too vivid', 'overshooting the saturation', 'more colourful than it needed'],
-        L: ['way too saturated', 'far too vivid', 'cranked the colour right up', 'saturated beyond recognition', 'practically neon', 'colour went into overdrive', 'vividness through the roof', 'blasted with colour', 'dialled to eleven', 'colour absolutely maxed out'],
+        S: ['a touch too saturated','slightly too vivid','just a hair too punchy','barely too vivid','a hint too much colour','fractionally oversaturated','colour crept up slightly','a whisper too colourful','only just oversaturated','nudged the vividness too far'],
+        M: ['quite oversaturated','noticeably too vivid','too much colour in there','clearly too saturated','vividness got away from you','colour pushed a bit far','punched the colour too hard','a fair bit too vivid','overshooting the saturation','more colourful than it needed'],
+        L: ['way too saturated','far too vivid','cranked the colour right up','saturated beyond recognition','practically neon','colour went into overdrive','vividness through the roof','blasted with colour','dialled to eleven','colour absolutely maxed out'],
       }[band(worst.delta)]);
     } else {
-      // Too grey
       return pick({
-        S: ['needed more saturation', 'a bit washed out', 'could\'ve been more vivid', 'just a touch more colour needed', 'slightly too grey', 'barely undersaturated', 'a hint more vividness needed', 'fractionally too muted', 'colour fell just short', 'too close to grey'],
-        M: ['quite undersaturated', 'noticeably washed out', 'needed a lot more colour', 'clearly too muted', 'colour fell short', 'greyer than it needed', 'a fair bit too washed out', 'undershooting the vividness', 'a fair bit too grey', 'more muted than it should be'],
-        L: ['very undersaturated', 'drained of colour', 'almost greyscale', 'thoroughly dull', 'saturation nowhere to be found', 'nearly all the colour gone', 'flat and colourless', 'utterly devoid of colour', 'the colour drained away', 'thoroughly desaturated'],
+        S: ['needed more saturation','a bit washed out',"could've been more vivid",'just a touch more colour needed','slightly too grey','barely undersaturated','a hint more vividness needed','fractionally too muted','colour fell just short','too close to grey'],
+        M: ['quite undersaturated','noticeably washed out','needed a lot more colour','clearly too muted','colour fell short','greyer than it needed','a fair bit too washed out','undershooting the vividness','a fair bit too grey','more muted than it should be'],
+        L: ['very undersaturated','drained of colour','almost greyscale','thoroughly dull','saturation nowhere to be found','nearly all the colour gone','flat and colourless','utterly devoid of colour','the colour drained away','thoroughly desaturated'],
       }[band(worst.delta)]);
     }
   }
 
-  // ── Hue — non-directional, single pool ──
+  // Hue — bucketed by delta, directional names in tight/medium bands
+  if (dH < 20) {
+    const name = hueName(tH);
+    return pick([
+      `should've been more ${name}`,
+      `target was more ${name}`,
+      `needed to lean ${name}`,
+      `a touch away from ${name}`,
+      `closer to ${name} than that`,
+      `was sitting in ${name}`,
+      `more ${name} than you gave it`,
+      `the ${name} was there, just missed`,
+      `just short of ${name}`,
+      `needed that ${name} push`,
+    ]);
+  }
+  if (dH < 40) {
+    const name = hueName(gH);
+    return pick([
+      `leaning too ${name}`,
+      `drifted into ${name}`,
+      `pulled toward ${name}`,
+      `ended up too ${name}`,
+      `hue slipped toward ${name}`,
+      `sat too far into ${name}`,
+      `went ${name} when it shouldn't`,
+      `the ${name} crept in`,
+      `too much ${name} in there`,
+      `hue landed in ${name} territory`,
+    ]);
+  }
   return pick([
     'hue was the giveaway',
     'colour angle drifted',
-    'hue pulled it off',
+    'hue had other ideas',
     'the angle was off',
+    'colour family was wrong',
     'not quite the right colour',
     'hue slipped away',
-    'close but the hue betrayed you',
-    'colour family was wrong',
-    'hue had other ideas',
     'the tone was adrift',
+    'hue pulled it off',
+    'close but the hue betrayed you',
   ]);
 }
 
@@ -2112,44 +2233,82 @@ function beginGuess() {
   }, 1000);
 }
 
+// Current hue value — kept as a plain number, not tied to a native input
+let hueVal = 180;
+
 function setSliderVal(axis, val) {
-  document.getElementById('sl-' + axis).value = val;
-  updateSlider(axis);
+  if (axis === 'h') {
+    hueVal = ((val % 360) + 360) % 360;
+    updateSlider('h');
+  } else {
+    document.getElementById('sl-' + axis).value = val;
+    updateSlider(axis);
+  }
 }
 
 function updateSlider(axis) {
+  if (axis === 'h') {
+    // Drum model — tape shifts, thumb stays centred
+    document.getElementById('val-h').textContent = pad3(Math.round(hueVal)) + '°';
+    updateHueTape();
+    refreshPreview();
+    updateSliderGradients();
+    return;
+  }
   const input = document.getElementById('sl-' + axis);
   const val = +input.value;
   const max = +input.max;
   const pct = (val / max) * 100;
-
   document.getElementById('thumb-' + axis).style.left = pct + '%';
-
-  if (axis === 'h') document.getElementById('val-h').textContent = pad3(val) + '°';
   if (axis === 's') document.getElementById('val-s').textContent = parseFloat(val).toFixed(1) + '%';
   if (axis === 'l') document.getElementById('val-l').textContent = parseFloat(val).toFixed(1) + '%';
-
   refreshPreview();
   updateSliderGradients();
 }
 
+function updateHueTape() {
+  const track = document.getElementById('track-h');
+  const tape  = document.getElementById('hue-tape');
+  if (!tape) return;
+
+  // Tape is 3× track width, centred on current hue
+  const trackW = track.offsetWidth;
+  const tapeW  = trackW * 3;
+  tape.style.width  = tapeW + 'px';
+  tape.style.height = '100%';
+  tape.style.borderRadius = (track.offsetHeight / 2) + 'px';
+
+  // Build a gradient that repeats: hueVal sits at the tape centre (50%)
+  // We render from (hueVal - 180) to (hueVal + 180), wrapping via modulo
+  const stops = [];
+  const steps = 24;
+  for (let i = 0; i <= steps; i++) {
+    const pct = (i / steps) * 100;
+    const h = ((hueVal - 180 + (i / steps) * 360) % 360 + 360) % 360;
+    stops.push(`hsl(${h.toFixed(1)},100%,50%) ${pct.toFixed(1)}%`);
+  }
+  tape.style.background = `linear-gradient(to right, ${stops.join(',')})`;
+
+  // Shift tape so its centre aligns with track centre
+  const offset = (trackW / 2) - (tapeW / 2);
+  tape.style.transform = `translateX(${offset}px)`;
+}
+
 function updateSliderGradients() {
   if (!isGuessing) return;
-  const h = +document.getElementById('sl-h').value;
+  const h = hueVal;
   const s = +document.getElementById('sl-s').value;
   const b = +document.getElementById('sl-l').value;
 
-  // Hue: always pure spectrum — stays readable regardless of S/B
-  const hueStops = [];
-  for (let i = 0; i <= 360; i += 30) hueStops.push(`hsl(${i},100%,50%)`);
-  document.getElementById('track-h').style.background = `linear-gradient(to right, ${hueStops.join(',')})`;
+  // Hue tape is handled by updateHueTape()
+  updateHueTape();
 
-  // Saturation: grey → vivid at current hue and brightness (via HSB→HSL)
+  // Saturation: grey → vivid at current hue and brightness
   const satStops = [];
   for (let sv = 0; sv <= 100; sv += 20) satStops.push(hsl(h, sv, b));
   document.getElementById('track-s').style.background = `linear-gradient(to right, ${satStops.join(',')})`;
 
-  // Brightness: black → full brightness at current hue/sat (via HSB→HSL)
+  // Brightness: black → full brightness at current hue/sat
   const briStops = [];
   for (let bv = 0; bv <= 100; bv += 20) briStops.push(hsl(h, s, bv));
   document.getElementById('track-l').style.background = `linear-gradient(to right, ${briStops.join(',')})`;
@@ -2157,12 +2316,47 @@ function updateSliderGradients() {
 
 function refreshPreview() {
   if (!isGuessing) return;
-  const h = +document.getElementById('sl-h').value;
+  const h = hueVal;
   const s = +document.getElementById('sl-s').value;
   const l = +document.getElementById('sl-l').value;
-  const colour = hsl(h, s, l);
-  document.getElementById('stage-colour').style.background = colour;
+  document.getElementById('stage-colour').style.background = hsl(h, s, l);
 }
+
+// ── HUE DRUM DRAG (mouse + touch) ──
+(function() {
+  const track = document.getElementById('track-h');
+  if (!track) return;
+
+  // px of drag = 1° of hue — feels natural
+  const DEG_PER_PX = 0.5;
+  let dragging = false;
+  let startX = 0;
+  let startHue = 180;
+
+  function onStart(x) {
+    if (!isGuessing) return;
+    dragging = true;
+    startX   = x;
+    startHue = hueVal;
+  }
+  function onMove(x) {
+    if (!dragging) return;
+    const dx = x - startX;
+    hueVal = (((startHue - dx * DEG_PER_PX) % 360) + 360) % 360;
+    updateSlider('h');
+  }
+  function onEnd() { dragging = false; }
+
+  // Mouse
+  track.addEventListener('mousedown',  e => { onStart(e.clientX); e.preventDefault(); });
+  window.addEventListener('mousemove', e => { if (dragging) onMove(e.clientX); });
+  window.addEventListener('mouseup',   onEnd);
+
+  // Touch
+  track.addEventListener('touchstart', e => { onStart(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
+  track.addEventListener('touchmove',  e => { onMove(e.touches[0].clientX); e.preventDefault(); },  { passive: false });
+  track.addEventListener('touchend',   onEnd);
+})();
 
 function countUp(el, from, to, duration, onDone) {
   const start = performance.now();
@@ -2185,7 +2379,7 @@ function lockGuess() {
 
   document.getElementById('stage-colour').style.background = 'var(--bg2)';
 
-  const gh = +document.getElementById('sl-h').value;
+  const gh = Math.round(hueVal);
   const gs = +document.getElementById('sl-s').value;
   const gb = +document.getElementById('sl-l').value;
   const tc = colours[round - 1];
@@ -2258,7 +2452,8 @@ nextBtn.onclick = nextRound;   // safety re-attach
   // Count-up + final population
   countUp(document.getElementById('res-score'), 0, tot, 800, () => {
     const gradeQuip = grade(tot);
-    const tip = perceptualTip(labT, labG, gh, gs, gb, tc.h, tc.s, tc.b, de);
+    const cct = closeCallTip(de);
+    const tip = cct || perceptualTip(labT, labG, gh, gs, gb, tc.h, tc.s, tc.b, de);
     document.getElementById('res-grade').innerHTML = tip
       ? `${gradeQuip}<br><span style="color:var(--dim)">${tip}</span>`
       : gradeQuip;
@@ -2517,14 +2712,11 @@ updateSlider('s');
 updateSlider('l');
 freshSeedToInput();
 
-// ── MOBILE SWIPE ZONES ──
-// On touch devices, make the entire slider-row a swipe target
-// so users don't need to land on the tiny thumb
+// ── MOBILE SWIPE ZONES (S and B only — H has its own drum handler) ──
 (function() {
   if (!('ontouchstart' in window)) return;
 
   const axes = [
-    { axis: 'h', min: 0, max: 360, step: 1 },
     { axis: 's', min: 0, max: 100, step: 0.5 },
     { axis: 'l', min: 0, max: 100, step: 0.5 },
   ];
@@ -2535,7 +2727,6 @@ freshSeedToInput();
     let startX = null;
     let startVal = null;
 
-    // Sensitivity: full swipe across screen (~360px) = full range
     const sensitivity = (max - min) / 280;
 
     row.addEventListener('touchstart', e => {
