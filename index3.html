@@ -445,32 +445,29 @@ html, body {
   border-radius: 5px;
   overflow: hidden;
 }
-/* Hue track uses drum model — overflow visible so tape can extend */
+/* Hue track - drum model, clipped to track bounds like S and B */
 #track-h {
-  overflow: visible;
+  overflow: hidden;
   cursor: ew-resize;
 }
-/* The scrolling tape behind the hue track */
+/* The scrolling tape - fills track exactly, gradient shifts underneath */
 .hue-tape {
   position: absolute;
-  top: 0;
-  height: 100%;
-  border-radius: 5px;
+  inset: 0;
   pointer-events: none;
-  will-change: transform;
+  will-change: background-position;
 }
-/* Centre pick-point notch on hue track */
+/* Centre pick-point notch - sits above tape via z-index */
 #track-h::after {
   content: '';
   position: absolute;
-  top: -3px;
-  bottom: -3px;
+  top: 0;
+  bottom: 0;
   left: 50%;
   width: 2px;
   transform: translateX(-50%);
-  background: var(--white);
-  border-radius: 1px;
-  box-shadow: 0 0 4px rgba(0,0,0,0.5);
+  background: rgba(255,255,255,0.9);
+  box-shadow: 0 0 3px rgba(0,0,0,0.6);
   z-index: 3;
   pointer-events: none;
 }
@@ -915,7 +912,6 @@ html, body {
   .slider-axis { font-size: 12px; min-width: 12px; }
   .slider-val { font-size: 15px; min-width: 42px; }
   .slider-track { height: 22px; border-radius: 11px; }
-  #track-h::after { top: -4px; bottom: -4px; }
   .slider-thumb { width: 34px; height: 34px; border-width: 2px; }
   .slider-native { height: 52px; }
   /* ── RESULT ── */
@@ -2267,31 +2263,25 @@ function updateSlider(axis) {
 }
 
 function updateHueTape() {
-  const track = document.getElementById('track-h');
-  const tape  = document.getElementById('hue-tape');
+  const tape = document.getElementById('hue-tape');
   if (!tape) return;
 
-  // Tape is 3× track width, centred on current hue
-  const trackW = track.offsetWidth;
-  const tapeW  = trackW * 3;
-  tape.style.width  = tapeW + 'px';
-  tape.style.height = '100%';
-  tape.style.borderRadius = (track.offsetHeight / 2) + 'px';
-
-  // Build a gradient that repeats: hueVal sits at the tape centre (50%)
-  // We render from (hueVal - 180) to (hueVal + 180), wrapping via modulo
+  // Always render the full 360-degree spectrum edge to edge.
+  // The gradient starts at (hueVal + 180) on the left and ends at
+  // (hueVal + 180) on the right, so hueVal sits exactly at the centre.
+  // This is a flat wheel — the whole spectrum is always visible,
+  // dragging just rotates it.
+  const steps = 36;
   const stops = [];
-  const steps = 24;
   for (let i = 0; i <= steps; i++) {
     const pct = (i / steps) * 100;
-    const h = ((hueVal - 180 + (i / steps) * 360) % 360 + 360) % 360;
+    const h = ((hueVal + 180 + (i / steps) * 360) % 360);
     stops.push(`hsl(${h.toFixed(1)},100%,50%) ${pct.toFixed(1)}%`);
   }
   tape.style.background = `linear-gradient(to right, ${stops.join(',')})`;
-
-  // Shift tape so its centre aligns with track centre
-  const offset = (trackW / 2) - (tapeW / 2);
-  tape.style.transform = `translateX(${offset}px)`;
+  tape.style.backgroundSize = '';
+  tape.style.backgroundPosition = '';
+  tape.style.backgroundRepeat = '';
 }
 
 function updateSliderGradients() {
