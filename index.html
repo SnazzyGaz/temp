@@ -2233,7 +2233,6 @@ function beginGuess() {
     sliders.style.pointerEvents = 'auto';
 
     isGuessing = true;
-    setSliderVal('h', 180);
     setSliderVal('s', 50);
     setSliderVal('l', 50);
     updateSliderGradients();
@@ -3736,6 +3735,8 @@ async function showDailyLeaderboard() {
   const body = document.getElementById('leaderboard-body');
   body.innerHTML = `<div style="padding:40px;text-align:center;color:var(--mute)">Loading today's scores…</div>`;
   modal.style.display = 'flex';
+  navStack.push({ type: 'modal', id: 'daily-leaderboard-modal' });
+  ensureSentinel();
 
   try {
     const snap = await fbDb.collection('daily-scores').doc(todayKey).collection('scores')
@@ -3767,7 +3768,7 @@ async function showDailyLeaderboard() {
 }
 
 function hideDailyLeaderboard() {
-  document.getElementById('daily-leaderboard-modal').style.display = 'none';
+  _closeModal('daily-leaderboard-modal');
 }
 
 </script>
