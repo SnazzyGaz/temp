@@ -3156,7 +3156,7 @@ function applyOptions() {
   if (!st) { st = document.createElement('style'); st.id = 'cb-style'; document.head.appendChild(st); }
   const filterMap = { none: 'none', deutan: 'url(#cb-deutan)', protan: 'url(#cb-protan)', tritan: 'url(#cb-tritan)' };
   st.textContent = cbMode === 'none' ? '' :
-    `.stage-colour, .result-target-bg, .result-guess-bg, .end-swatch-target, .end-swatch-guess { filter: ${filterMap[cbMode]}; }`;
+    `.stage-colour, .result-target-bg, .result-guess-bg, .end-swatch-target, .end-swatch-guess, .hue-tape { filter: ${filterMap[cbMode]}; }`;
 
   // Sync option button states
   document.querySelectorAll('.opt-cb-btn').forEach(b => {
