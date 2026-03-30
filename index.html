@@ -457,7 +457,7 @@ html, body {
   pointer-events: none;
   will-change: background-position;
 }
-/* Centre pick-point notch - sits above tape via z-index */
+/* Centre pick-point notch - thin line so it marks without obscuring */
 #track-h::after {
   content: '';
   position: absolute;
@@ -466,8 +466,8 @@ html, body {
   left: 50%;
   width: 2px;
   transform: translateX(-50%);
-  background: rgba(255,255,255,0.9);
-  box-shadow: 0 0 3px rgba(0,0,0,0.6);
+  background: rgba(255,255,255,0.85);
+  box-shadow: 0 0 3px rgba(0,0,0,0.5);
   z-index: 3;
   pointer-events: none;
 }
@@ -486,9 +486,9 @@ html, body {
   pointer-events: none;
   z-index: 1;
 }
-/* Hue thumb sits fixed at centre */
+/* Hue thumb hidden — rotating gradient + value readout is sufficient */
 #thumb-h {
-  left: 50% !important;
+  display: none;
 }
 
 .slider-native {
@@ -2329,8 +2329,9 @@ function refreshPreview() {
   const track = document.getElementById('track-h');
   if (!track) return;
 
-  // px of drag = 1° of hue — feels natural
-  const DEG_PER_PX = 0.5;
+  // 1px = 1° feels natural — the full spectrum is always visible so
+  // dragging the track width covers roughly half the wheel
+  const DEG_PER_PX = 1.0;
   let dragging = false;
   let startX = 0;
   let startHue = 180;
@@ -2616,6 +2617,41 @@ function replaySeed() {
 }
 
 // ── HISTORY ──
+function loadLifetimeStats() {
+  try { return JSON.parse(localStorage.getItem('chromemory_stats') || 'null'); } catch(e) { return null; }
+}
+
+function saveLifetimeStats(s) {
+  try { localStorage.setItem('chromemory_stats', JSON.stringify(s)); } catch(e) {}
+}
+
+function updateLifetimeStats(avg, roundHistory) {
+  const s = loadLifetimeStats() || {
+    totalGames: 0,
+    scoreSum:   0,
+    bestGame:   null,   // { score, seed }
+    bestRound:  0,
+    byDiff:     { easy: { sum: 0, count: 0 }, medium: { sum: 0, count: 0 }, hard: { sum: 0, count: 0 } },
+  };
+
+  s.totalGames++;
+  s.scoreSum += avg;
+
+  if (!s.bestGame || avg > s.bestGame.score) {
+    s.bestGame = { score: avg, seed: seedStr };
+  }
+
+  const roundBest = roundHistory.reduce((b, r) => r.tot > b ? r.tot : b, 0);
+  if (roundBest > s.bestRound) s.bestRound = roundBest;
+
+  if (s.byDiff[diff]) {
+    s.byDiff[diff].sum   += avg;
+    s.byDiff[diff].count += 1;
+  }
+
+  saveLifetimeStats(s);
+}
+
 function saveToHistory(avg) {
   const entry = {
     seed: seedStr,
@@ -2628,6 +2664,7 @@ function saveToHistory(avg) {
   h.unshift(entry);
   h = h.slice(0, 50);
   try { localStorage.setItem('chromemory_history', JSON.stringify(h)); } catch(e) {}
+  updateLifetimeStats(avg, history);
   if (isDailyMode) saveDailyRecord(avg);
 }
 
@@ -3343,8 +3380,10 @@ function checkAchievements(avg, roundHistory) {
   const diffs = new Set(h.map(e => e.diff));
   if (diffs.has('easy') && diffs.has('medium') && diffs.has('hard')) unlockAchievement('all_diff');
 
-  // Century
-  if (h.length >= 100) unlockAchievement('century');
+  // Century — use accumulator if available for accurate count
+  const ls = loadLifetimeStats();
+  const totalPlayed = ls ? ls.totalGames : h.length;
+  if (totalPlayed >= 100) unlockAchievement('century');
 
   // Comeback — previousSeedScore is set before replaySeed()
   if (previousSeedScore !== null && avg > previousSeedScore) unlockAchievement('comeback');
@@ -3430,21 +3469,35 @@ function renderStatsBody() {
 }
 
 function buildStatsHTML() {
-  const h = loadHistory();
-  if (!h.length) return `<div style="font-size:11px;color:var(--dim);text-align:center;padding:32px 0">No games yet.</div>`;
+  const h  = loadHistory();
+  const ls = loadLifetimeStats();
 
-  const total  = h.length;
-  const avg    = h.reduce((a,e) => a + e.score, 0) / total;
-  const best   = h.reduce((b,e) => e.score > b.score ? e : b, h[0]);
-  const bestRound = h.flatMap(e => e.rounds || []).reduce((b,r) => r.tot > b ? r.tot : b, 0);
-  const streak = getDailyStreak(h);
+  // Headline stats — use accumulator if available (accurate beyond 50 games),
+  // fall back to history window for players who predate the accumulator
+  const total     = ls ? ls.totalGames : h.length;
+  const avg       = ls ? ls.scoreSum / ls.totalGames : (h.length ? h.reduce((a,e) => a+e.score, 0) / h.length : 0);
+  const bestGame  = ls ? ls.bestGame  : (h.length ? h.reduce((b,e) => e.score > b.score ? e : b, h[0]) : null);
+  const bestRound = ls ? ls.bestRound : (h.length ? h.flatMap(e => e.rounds||[]).reduce((b,r) => r.tot > b ? r.tot : b, 0) : 0);
+
+  if (!total) return `<div style="font-size:11px;color:var(--dim);text-align:center;padding:32px 0">No games yet.</div>`;
+
+  const streak   = getDailyStreak(h);
   const weakness = getAxisWeakness(h);
 
-  const byDiff = { easy: [], medium: [], hard: [] };
-  h.forEach(e => { if (byDiff[e.diff]) byDiff[e.diff].push(e.score); });
-  const diffAvg = d => byDiff[d].length ? (byDiff[d].reduce((a,b)=>a+b,0)/byDiff[d].length).toFixed(2) : '—';
+  // Difficulty averages — use accumulator if available
+  const diffAvg = d => {
+    if (ls && ls.byDiff[d] && ls.byDiff[d].count) {
+      return (ls.byDiff[d].sum / ls.byDiff[d].count).toFixed(2);
+    }
+    const scores = h.filter(e => e.diff === d).map(e => e.score);
+    return scores.length ? (scores.reduce((a,b) => a+b, 0) / scores.length).toFixed(2) : '—';
+  };
+  const diffCount = d => {
+    if (ls && ls.byDiff[d]) return ls.byDiff[d].count;
+    return h.filter(e => e.diff === d).length;
+  };
 
-  const last10 = h.slice(0,10).map(e => e.score);
+  const last10   = h.slice(0,10).map(e => e.score);
   const sparkMax = Math.max(...last10, 1);
 
   const row = (label, val) => `
@@ -3463,7 +3516,7 @@ function buildStatsHTML() {
   return `
     ${row('Total Games', total)}
     ${row('All-time Average', avg.toFixed(2))}
-    ${row('Best Game', `${best.score.toFixed(2)} <span style="font-size:9px;color:var(--dim);letter-spacing:.06em">${best.seed}</span>`)}
+    ${bestGame ? row('Best Game', `${bestGame.score.toFixed(2)} <span style="font-size:9px;color:var(--dim);letter-spacing:.06em">${bestGame.seed}</span>`) : ''}
     ${row('Best Single Round', bestRound.toFixed(2))}
     ${row('Daily Streak', streak + (streak === 1 ? ' day' : ' days'))}
     ${weakness ? row('Weakest Axis', weakness) : ''}
@@ -3473,7 +3526,7 @@ function buildStatsHTML() {
       ${['easy','medium','hard'].map(d => `<div style="flex:1;background:var(--bg3);border:0.5px solid var(--line);border-radius:3px;padding:8px 6px;text-align:center">
         <div style="font-size:8px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;margin-bottom:4px">${d}</div>
         <div style="font-size:15px;color:var(--bright)">${diffAvg(d)}</div>
-        <div style="font-size:8px;color:var(--dim);margin-top:2px">${byDiff[d].length} game${byDiff[d].length !== 1 ? 's' : ''}</div>
+        <div style="font-size:8px;color:var(--dim);margin-top:2px">${diffCount(d)} game${diffCount(d) !== 1 ? 's' : ''}</div>
       </div>`).join('')}
     </div>
     ${last10.length > 1 ? `
