@@ -1550,6 +1550,110 @@ function grade(n) {
   return tier.msgs[Math.floor(Math.random() * tier.msgs.length)];
 }
 
+// ── PERCEPTUAL TIP ──
+// Fires on the result screen only. Finds the worst axis delta, rolls
+// probability (25% at delta=5 → 100% at delta=10), then returns a
+// bucketed directional tip string or null. Perplexed tier fires at
+// raw ΔE₀₀ > 35 with 85% probability and overrides everything.
+function perceptualTip(labTarget, labGuess, gH, gS, gB, tH, tS, tB, de) {
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+  // ── Perplexed tier — overrides axis tips ──
+  if (de > 35 && Math.random() < 0.85) {
+    return pick([
+      'come on now',
+      'were you even looking?',
+      'that was a different colour entirely',
+      'starting from scratch there',
+      'bold choice',
+      'not even close',
+      'a whole other colour',
+      'did you close your eyes?',
+      'that went somewhere else entirely',
+      'colour amnesia'
+    ]);
+  }
+
+  const THRESHOLD = 5;
+  const FULL_PROB_AT = 10;
+  const BASE_PROB = 0.25;
+
+  const parts = ciede2000Parts(labTarget, labGuess);
+  const dL = parseFloat(parts.sL.toFixed(2));
+  const dC = parseFloat(parts.sC.toFixed(2));
+  const dH = parseFloat(parts.sH.toFixed(2));
+
+  const axes = [
+    { key: 'L', delta: dL },
+    { key: 'C', delta: dC },
+    { key: 'H', delta: dH },
+  ];
+  axes.sort((a, b) => b.delta - a.delta);
+  const worst = axes[0];
+
+  if (worst.delta < THRESHOLD) return null;
+
+  // Probability roll — linear from BASE_PROB at THRESHOLD to 1.0 at FULL_PROB_AT
+  const t = Math.min((worst.delta - THRESHOLD) / (FULL_PROB_AT - THRESHOLD), 1);
+  const prob = BASE_PROB + (1 - BASE_PROB) * t;
+  if (Math.random() > prob) return null;
+
+  // ── Band helper ──
+  const band = d => d < 8 ? 'S' : d < 14 ? 'M' : 'L';
+
+  // ── Lightness ──
+  if (worst.key === 'L') {
+    if (gB > tB) {
+      // Too bright
+      return pick({
+        S: ['a touch too bright', 'slightly too light', 'just a hair too bright', 'barely too light', 'fractionally too bright', 'landed too light', 'a whisper too bright', 'only just too bright', 'nudged it too bright', 'crept into the light'],
+        M: ['quite a bit too bright', 'noticeably too light', 'too much brightness', 'pushed the brightness too far', 'clearly too light', 'overshooting the brightness', 'brighter than it needed', 'brightness crept up', 'a fair bit too bright', 'light got away from you'],
+        L: ['way too bright', 'far too light', 'massively overlit', 'brightness through the roof', 'washed it right out', 'thoroughly overexposed', 'practically glowing', 'turned the lights up way too high', 'blinding', 'overlit by a mile'],
+      }[band(worst.delta)]);
+    } else {
+      // Too dark
+      return pick({
+        S: ['a bit too dark', 'pushed it too dark', 'just a shade too dark', 'slightly underlit', 'barely too dark', 'fractionally too dim', 'just a hair too dim', 'nudged it too dark', 'a touch too dim', 'landed too dark'],
+        M: ['quite a bit too dark', 'noticeably too dark', 'clearly too dim', 'undershooting the brightness', 'darker than it needed', 'brightness fell short', 'dimmed it too much', 'a fair bit too dark', 'dimmed beyond recognition', 'duller than it should be'],
+        L: ['way too dark', 'far too dim', 'lost in the shadows', 'nearly pitch black', 'dragged it into the dark', 'severely underlit', 'thoroughly underexposed', 'buried in shadow', 'deep in the dark', 'almost no brightness there'],
+      }[band(worst.delta)]);
+    }
+  }
+
+  // ── Chroma ──
+  if (worst.key === 'C') {
+    if (gS > tS) {
+      // Too saturated
+      return pick({
+        S: ['a touch too saturated', 'slightly too vivid', 'just a hair too punchy', 'barely too vivid', 'a hint too much colour', 'fractionally oversaturated', 'colour crept up slightly', 'a whisper too colourful', 'only just oversaturated', 'nudged the vividness too far'],
+        M: ['quite oversaturated', 'noticeably too vivid', 'too much colour in there', 'clearly too saturated', 'vividness got away from you', 'colour pushed a bit far', 'punched the colour too hard', 'a fair bit too vivid', 'overshooting the saturation', 'more colourful than it needed'],
+        L: ['way too saturated', 'far too vivid', 'cranked the colour right up', 'saturated beyond recognition', 'practically neon', 'colour went into overdrive', 'vividness through the roof', 'blasted with colour', 'dialled to eleven', 'colour absolutely maxed out'],
+      }[band(worst.delta)]);
+    } else {
+      // Too grey
+      return pick({
+        S: ['needed more saturation', 'a bit washed out', 'could\'ve been more vivid', 'just a touch more colour needed', 'slightly too grey', 'barely undersaturated', 'a hint more vividness needed', 'fractionally too muted', 'colour fell just short', 'too close to grey'],
+        M: ['quite undersaturated', 'noticeably washed out', 'needed a lot more colour', 'clearly too muted', 'colour fell short', 'greyer than it needed', 'a fair bit too washed out', 'undershooting the vividness', 'a fair bit too grey', 'more muted than it should be'],
+        L: ['very undersaturated', 'drained of colour', 'almost greyscale', 'thoroughly dull', 'saturation nowhere to be found', 'nearly all the colour gone', 'flat and colourless', 'utterly devoid of colour', 'the colour drained away', 'thoroughly desaturated'],
+      }[band(worst.delta)]);
+    }
+  }
+
+  // ── Hue — non-directional, single pool ──
+  return pick([
+    'hue was the giveaway',
+    'colour angle drifted',
+    'hue pulled it off',
+    'the angle was off',
+    'not quite the right colour',
+    'hue slipped away',
+    'close but the hue betrayed you',
+    'colour family was wrong',
+    'hue had other ideas',
+    'the tone was adrift',
+  ]);
+}
+
 function hueDiff(a, b) {
   let d = Math.abs(a - b);
   return d > 180 ? 360 - d : d;
@@ -2153,7 +2257,11 @@ nextBtn.onclick = nextRound;   // safety re-attach
 
   // Count-up + final population
   countUp(document.getElementById('res-score'), 0, tot, 800, () => {
-    document.getElementById('res-grade').textContent = grade(tot);
+    const gradeQuip = grade(tot);
+    const tip = perceptualTip(labT, labG, gh, gs, gb, tc.h, tc.s, tc.b, de);
+    document.getElementById('res-grade').innerHTML = tip
+      ? `${gradeQuip}<br><span style="color:var(--dim)">${tip}</span>`
+      : gradeQuip;
 
     // Perceptual deltas
     document.getElementById('ax-h').textContent = fmt(sh);
