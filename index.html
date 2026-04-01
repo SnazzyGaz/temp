@@ -600,16 +600,32 @@ const PRESETS=[
 
 // ═══════════════════════════════════════════ SURFACE
 const SURF_COL={asphalt:'#44455a',concrete:'#6e6f7c',dirt:'#786050',gravel:'#5e5e66',brick:'#784840',grass:'#3a5e38',pipe:'#2a7a2a',scifi:'#1a2438'};
-const SW_COL={concrete:'#868078',paved:'#6e6e76',grass:'#426040',brick:'#724840',barrier:'#2e2e42'};
+// River water surface colours — keyed by surface value used in river theme
+const WATER_COL={asphalt:'#1e4d7a',concrete:'#2a6b5a',gravel:'#1a3a5c',dirt:'#3d3820',scifi:'#0a1a3a'};
+const SW_COL={concrete:'#868078',paved:'#6e6e76',grass:'#426040',brick:'#724840',barrier:'#2e2e42',
+  // river bank types (swType values)
+  dirt:'#5a4228',gravel:'#6a6050'};
+// Returns the actual fill colour for the sidewalk/bank strip
+const sidewalkCol=()=>{
+  const th=S.pathTheme;
+  if(th==='river'){
+    const riverBankCols={grass:'#3d5c28',dirt:'#5a4228',gravel:'#6a6050',concrete:'#9a8060',brick:'#7a5838'};
+    return riverBankCols[S.swType]||riverBankCols.grass;
+  }
+  return SW_COL[S.swType]||SW_COL.concrete;
+};
 const hexRGB=h=>[parseInt(h.slice(1,3),16)||0,parseInt(h.slice(3,5),16)||0,parseInt(h.slice(5,7),16)||0];
 const shade=(c,m)=>{const[r,g,b]=hexRGB(c);return`rgb(${Math.round(Math.min(255,r*m))},${Math.round(Math.min(255,g*m))},${Math.round(Math.min(255,b*m))})`};
-const roadCol=()=>S.roadColor||SURF_COL[S.surface]||SURF_COL.asphalt;
-const sidewalkCol=()=>SW_COL[S.swType]||SW_COL.concrete;
+const roadCol=()=>{
+  if(S.pathTheme==='river') return S.roadColor||(WATER_COL[S.surface]||WATER_COL.asphalt);
+  return S.roadColor||SURF_COL[S.surface]||SURF_COL.asphalt;
+};
 function setSurface(v){
-  const prevDefault=SURF_COL[S.surface]||SURF_COL.asphalt;
+  const colMap=S.pathTheme==='river'?WATER_COL:SURF_COL;
+  const prevDefault=colMap[S.surface]||colMap[Object.keys(colMap)[0]];
   const wasDefault=!S.roadColor||S.roadColor===prevDefault;
   S.surface=v;
-  if(wasDefault) S.roadColor=SURF_COL[v]||SURF_COL.asphalt;
+  if(wasDefault) S.roadColor=colMap[v]||colMap[Object.keys(colMap)[0]];
 }
 function setPitch(v){
   S.camPitch=Math.max(12,Math.min(68,+v||32));
@@ -618,10 +634,19 @@ function setPitch(v){
   draw();
 }
 function setZoomValue(v,fromSlider){
-  S.zoom=Math.max(.08,Math.min(14,+v||1));
+  const newZoom=Math.max(.08,Math.min(14,+v||1));
+  if(fromSlider){
+    // Zoom toward/away from the canvas centre (same math as wheel but anchored to W/2,H/2)
+    const cx=W/2,cy=H/2;
+    const wx=(cx-S.px)/S.zoom,wy=(cy-S.py)/S.zoom;
+    S.zoom=newZoom;
+    S.px=cx-wx*S.zoom;S.py=cy-wy*S.zoom;
+    markInteraction(180);
+  } else {
+    S.zoom=newZoom;
+  }
   const el=document.getElementById('sl-zoom');if(el)el.value=Math.round(S.zoom*100);
-  const out=document.getElementById('zoomv');if(out)out.textContent=S.zoom.toFixed(2)+'Ã—';
-  if(fromSlider) markInteraction(180);
+  const out=document.getElementById('zoomv');if(out)out.textContent=S.zoom.toFixed(2)+'×';
   draw();
 }
 function noise2(x,y){return(Math.sin(x*127.1+y*311.7)*43758.5453)%1;}
@@ -1187,6 +1212,110 @@ function drawThemeOverlay(pL0,pR0,pSp,spine,t,ox,oy){
   ctx.restore();
 }
 
+// River-specific surface textures — each water type looks visually distinct
+function drawWaterTexture(L,R,type,spine){
+  if(!L||!R||L.length<2||R.length<2) return;
+  const fL=L.filter(p=>p&&isFinite(p.x)&&isFinite(p.y));
+  const fR=R.filter(p=>p&&isFinite(p.x)&&isFinite(p.y));
+  if(fL.length<2||fR.length<2) return;
+  const N=fL.length;
+  const rR=fL.map((_,i)=>{
+    const f=i/(N-1),ri=Math.min(f*(fR.length-1),fR.length-1);
+    const lo=Math.floor(ri),hi=Math.min(lo+1,fR.length-1),ff=ri-lo;
+    return{x:fR[lo].x+(fR[hi].x-fR[lo].x)*ff,y:fR[lo].y+(fR[hi].y-fR[lo].y)*ff};
+  });
+  const tang=fL.map((_,i)=>{
+    const a=Math.max(0,i-1),b=Math.min(N-1,i+1);
+    const dx=rR[b].x-rR[a].x+fL[b].x-fL[a].x,dy=rR[b].y-rR[a].y+fL[b].y-fL[a].y;
+    const l=Math.hypot(dx,dy)||1;return{x:dx/l,y:dy/l};
+  });
+  const norm=fL.map((p,i)=>{const dx=rR[i].x-p.x,dy=rR[i].y-p.y,l=Math.hypot(dx,dy)||1;return{x:dx/l,y:dy/l};});
+  const mid=fL.map((p,i)=>({x:(p.x+rR[i].x)/2,y:(p.y+rR[i].y)/2}));
+  const hw=fL.map((p,i)=>Math.hypot(rR[i].x-p.x,rR[i].y-p.y)*0.5);
+  const arcLen=[0];
+  for(let i=1;i<N;i++) arcLen.push(arcLen[i-1]+Math.hypot(mid[i].x-mid[i-1].x,mid[i].y-mid[i-1].y));
+
+  ctx.save();
+  ctx.beginPath();ctx.moveTo(fL[0].x,fL[0].y);
+  for(let i=1;i<N;i++) ctx.lineTo(fL[i].x,fL[i].y);
+  for(let i=fR.length-1;i>=0;i--) ctx.lineTo(fR[i].x,fR[i].y);
+  ctx.closePath();ctx.clip();
+
+  if(type==='asphalt'){
+    // calm — smooth surface sheen, subtle centreline highlight
+    const mkOff=(frac)=>fL.map((p,i)=>({x:p.x+norm[i].x*hw[i]*2*frac,y:p.y+norm[i].y*hw[i]*2*frac}));
+    const fillB=(a,b,col,alpha)=>{const fa=a.filter(p=>isFinite(p.x)),fb=b.filter(p=>isFinite(p.x));if(fa.length<2||fb.length<2)return;ctx.save();ctx.globalAlpha=alpha;ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(fa[0].x,fa[0].y);for(let k=1;k<fa.length;k++)ctx.lineTo(fa[k].x,fa[k].y);for(let k=fb.length-1;k>=0;k--)ctx.lineTo(fb[k].x,fb[k].y);ctx.closePath();ctx.fill();ctx.restore();};
+    fillB(mkOff(.3),mkOff(.7),'rgba(120,180,240,.10)',1);
+    fillB(mkOff(.42),mkOff(.58),'rgba(180,220,255,.08)',1);
+  } else if(type==='concrete'){
+    // flowing — diagonal current lines at ~30° to flow direction
+    ctx.globalAlpha=.09;ctx.strokeStyle='rgba(140,200,240,.8)';ctx.lineWidth=0.7;
+    const spacing=Math.max(10,hw[Math.floor(N/2)]*0.6);
+    let cd=0;
+    for(let i=1;i<N;i++){
+      cd+=arcLen[i]-arcLen[i-1];
+      if(cd>=spacing){
+        cd=0;
+        const cx=mid[i].x,cy=mid[i].y;
+        // Two angled lines suggesting current direction
+        const tx=tang[i].x,ty=tang[i].y,nx=norm[i].x,ny=norm[i].y;
+        const span=hw[i]*0.7;
+        ctx.beginPath();ctx.moveTo(cx-nx*span+tx*span*.4,cy-ny*span+ty*span*.4);ctx.lineTo(cx+nx*span-tx*span*.4,cy+ny*span-ty*span*.4);ctx.stroke();
+      }
+    }
+    // Central glint
+    ctx.globalAlpha=.06;ctx.strokeStyle='rgba(200,230,255,.9)';ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.moveTo(mid[0].x,mid[0].y);for(let i=1;i<N;i++)ctx.lineTo(mid[i].x,mid[i].y);ctx.stroke();
+  } else if(type==='gravel'){
+    // rapids — broken choppy cross-hatching suggesting turbulent white water
+    ctx.globalAlpha=.14;ctx.strokeStyle='rgba(220,235,255,.85)';ctx.lineWidth=0.9;
+    for(let i=2;i<N-2;i+=3){
+      const n=Math.abs(noise2(arcLen[i]*.1,i*.13));
+      if(n<.3) continue;
+      const off=(n-.3)*hw[i]*1.6;
+      const span=hw[i]*(0.3+n*.5);
+      ctx.beginPath();ctx.moveTo(mid[i].x-norm[i].x*off-tang[i].x*span*.3,mid[i].y-norm[i].y*off-tang[i].y*span*.3);
+      ctx.lineTo(mid[i].x-norm[i].x*off+tang[i].x*span*.3,mid[i].y-norm[i].y*off+tang[i].y*span*.3);ctx.stroke();
+    }
+    // foam patches
+    ctx.globalAlpha=.10;ctx.fillStyle='rgba(240,245,255,.9)';
+    for(let i=1;i<N-1;i+=5){
+      const n=Math.abs(noise2(i*.07,arcLen[i]*.04));
+      if(n<.55) continue;
+      const off=(n-.55)*hw[i]*2.0;
+      ctx.beginPath();ctx.arc(mid[i].x+norm[i].x*off,mid[i].y+norm[i].y*off,(n-.4)*4,0,Math.PI*2);ctx.fill();
+    }
+  } else if(type==='dirt'){
+    // murky — low-visibility brownish tint with subtle swirl marks
+    ctx.globalAlpha=.18;ctx.fillStyle='rgba(80,55,20,.35)';
+    ctx.beginPath();ctx.moveTo(fL[0].x,fL[0].y);
+    for(let i=1;i<N;i++)ctx.lineTo(fL[i].x,fL[i].y);
+    for(let i=fR.length-1;i>=0;i--)ctx.lineTo(fR[i].x,fR[i].y);ctx.closePath();ctx.fill();
+    ctx.globalAlpha=.07;ctx.strokeStyle='rgba(60,40,10,.7)';ctx.lineWidth=1.0;
+    for(let i=4;i<N-4;i+=8){
+      const n=Math.abs(noise2(i*.05,arcLen[i]*.03));
+      const off=(n-.5)*hw[i]*1.2;
+      ctx.beginPath();ctx.moveTo(mid[i].x+norm[i].x*off-tang[i].x*5,mid[i].y+norm[i].y*off-tang[i].y*5);
+      ctx.bezierCurveTo(mid[i].x+norm[i].x*(off+4),mid[i].y+norm[i].y*(off+4),mid[i].x+norm[i].x*(off-4),mid[i].y+norm[i].y*(off-4),mid[i].x+norm[i].x*off+tang[i].x*5,mid[i].y+norm[i].y*off+tang[i].y*5);ctx.stroke();
+    }
+  } else if(type==='scifi'){
+    // deep — dark with faint depth-glow from below, subtle bioluminescent dots
+    ctx.globalAlpha=.12;ctx.fillStyle='rgba(0,10,40,.5)';
+    ctx.beginPath();ctx.moveTo(fL[0].x,fL[0].y);
+    for(let i=1;i<N;i++)ctx.lineTo(fL[i].x,fL[i].y);
+    for(let i=fR.length-1;i>=0;i--)ctx.lineTo(fR[i].x,fR[i].y);ctx.closePath();ctx.fill();
+    ctx.globalAlpha=.08;ctx.fillStyle='rgba(40,80,160,.6)';
+    for(let i=1;i<N-1;i+=6){
+      const n=Math.abs(noise2(i*.09,arcLen[i]*.06));
+      if(n<.5) continue;
+      const off=(n-.5)*hw[i]*1.8;
+      ctx.beginPath();ctx.arc(mid[i].x+norm[i].x*off,mid[i].y+norm[i].y*off,(n-.4)*5,0,Math.PI*2);ctx.fill();
+    }
+  }
+
+  ctx.restore();
+}
+
 // ═══════════════════════════════════════════ CURVE MATH
 function cr2bez(pts,ten){
   if(pts.length<2) return [];
@@ -1430,26 +1559,25 @@ function relaxTightControlPoints(pts,guardR){
   }
   return cur;
 }
-function geometryKey(){
-  return JSON.stringify({
+function getRoadGeometry(){
+  const samples=desiredCurveSamples(); // compute once — used in both key and sampling
+  const safeR=pathSafetyRadius();
+  const key=JSON.stringify({
     pts:S.pts.map(p=>[+p.x.toFixed(2),+p.y.toFixed(2)]),
     tension:+clampTension(S.tension).toFixed(4),
     minR:+S.minR.toFixed(2),
+    safeR:+safeR.toFixed(2),
     angularity:+clampAngularity(S.angularity).toFixed(4),
-    samples:desiredCurveSamples(),
+    samples,
     rw:+S.rw.toFixed(2),
     sidewalks:!!S.sidewalks,
     swSide:S.swSide,
     sww:+S.sww.toFixed(2)
   });
-}
-function getRoadGeometry(){
-  const key=geometryKey();
   if(GEOM_CACHE.key===key&&GEOM_CACHE.value) return GEOM_CACHE.value;
-  const safeR=pathSafetyRadius();
   const safePts=enforceMinRadius(relaxTightControlPoints(enforceMinRadius(S.pts,safeR),safeR),safeR);
   const segs=cr2bez(safePts,S.tension);
-  const curveSpine=sampleCurve(segs,desiredCurveSamples());
+  const curveSpine=sampleCurve(segs,samples);
   const milestoneCurveSpine=sampleCurve(segs,24);
   const ang=clampAngularity(S.angularity);
   let spine=curveSpine;
@@ -1485,27 +1613,42 @@ function getRoadGeometry(){
 }
 function enforceMinRadius(pts,minR){
   if(minR<=0||pts.length<3) return pts;
-  const out=[pts[0]];
-  for(let i=1;i<pts.length-1;i++){
-    const a=pts[i-1],b=pts[i],c=pts[i+1];
-    const ab=Math.hypot(b.x-a.x,b.y-a.y);
-    const bc=Math.hypot(c.x-b.x,c.y-b.y);
-    if(ab<1||bc<1){out.push(b);continue;}
-    const iax=(a.x-b.x)/ab,iay=(a.y-b.y)/ab;
-    const ibx=(c.x-b.x)/bc,iby=(c.y-b.y)/bc;
-    const ang=Math.acos(Math.max(-1,Math.min(1,iax*ibx+iay*iby)));
-    if(!isFinite(ang)||ang>2.95||ang<0.08){out.push(b);continue;}
-    const turn=(Math.PI-ang)/Math.PI;
-    const cut=Math.min(minR*(0.55+turn*1.35),ab*.42,bc*.42);
-    if(cut<1.2){out.push(b);continue;}
-    const p1={x:b.x+iax*cut,y:b.y+iay*cut};
-    const p2={x:b.x+ibx*cut,y:b.y+iby*cut};
-    const last=out[out.length-1];
-    if(Math.hypot(p1.x-last.x,p1.y-last.y)>0.6) out.push(p1);
-    if(Math.hypot(p2.x-p1.x,p2.y-p1.y)>0.6) out.push(p2);
+  // Instead of chamfering/inserting arc points (which cause spline overshoots),
+  // we simply pull each control point toward the midpoint of its neighbours
+  // until the implied turn radius is large enough. The Catmull-Rom spline then
+  // produces a genuinely smooth curve through these adjusted positions.
+  let cur=pts.map(p=>({x:p.x,y:p.y}));
+  for(let pass=0;pass<6;pass++){
+    let changed=false;
+    const next=[cur[0]];
+    for(let i=1;i<cur.length-1;i++){
+      const a=cur[i-1],b=cur[i],c=cur[i+1];
+      const ab=Math.hypot(b.x-a.x,b.y-a.y);
+      const bc=Math.hypot(c.x-b.x,c.y-b.y);
+      if(ab<1||bc<1){next.push(b);continue;}
+      const iax=(a.x-b.x)/ab,iay=(a.y-b.y)/ab;
+      const ibx=(c.x-b.x)/bc,iby=(c.y-b.y)/bc;
+      const cosAng=Math.max(-1,Math.min(1,iax*ibx+iay*iby));
+      const ang=Math.acos(cosAng);
+      if(!isFinite(ang)||ang>2.95||ang<0.05){next.push(b);continue;}
+      // Approximate radius at this corner via the inscribed circle formula
+      const s=Math.min(ab,bc);
+      const halfAng=ang/2;
+      const estR=s*Math.tan(halfAng);
+      if(estR>=minR){next.push(b);continue;}
+      // Pull b toward the midpoint of a and c — this widens the turn radius
+      // The amount of pull needed: target estR = minR, so target s = minR/tan(halfAng)
+      // But halfAng also changes as b moves, so we do a proportional nudge per pass
+      const pull=Math.min(0.55,1-(estR/minR));
+      const mx=(a.x+c.x)/2,my=(a.y+c.y)/2;
+      next.push({x:b.x+(mx-b.x)*pull*0.7,y:b.y+(my-b.y)*pull*0.7});
+      changed=true;
+    }
+    next.push(cur[cur.length-1]);
+    cur=next;
+    if(!changed) break;
   }
-  out.push(pts[pts.length-1]);
-  return out.filter((p,i,arr)=>i===0||Math.hypot(p.x-arr[i-1].x,p.y-arr[i-1].y)>0.4);
+  return cur.filter((p,i,arr)=>i===0||Math.hypot(p.x-arr[i-1].x,p.y-arr[i-1].y)>0.4);
 }
 
 // ═══════════════════════════════════════════ ISO PROJECTION
@@ -2165,7 +2308,8 @@ function draw(){
 
     // Road surface
     fillStrip(pL0,pR0,sc);
-    drawSurfaceTexture(pL0,pR0,S.surface,spine,nrm);
+    if(S.pathTheme==='river') drawWaterTexture(pL0,pR0,S.surface,spine);
+    else drawSurfaceTexture(pL0,pR0,S.surface,spine,nrm);
     drawThemeOverlay(pL0,pR0,pSp,spine,t,ox,oy);
 
     // Markings clipped to road
